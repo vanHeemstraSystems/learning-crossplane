@@ -1,2 +1,155 @@
-# Integration test
-# Placeholder file - to be populated with actual content
+# Integration Test Example
+# End-to-end test for Crossplane resource creation
+
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: integration-test-case
+  namespace: test
+data:
+  # Test case: Database creation
+  test-case.yaml: |
+    name: test-database-creation
+    
+    steps:
+      # Step 1: Create XR
+      - name: create-xr
+        action: apply
+        resource: |
+          apiVersion: database.example.org/v1alpha1
+          kind: DatabaseClaim
+          metadata:
+            name: test-database
+            namespace: default
+          spec:
+            engine: postgres
+            instanceClass: db.t3.medium
+            storage: 100
+      
+      # Step 2: Wait for Ready
+      - name: wait-ready
+        action: wait
+        resource: DatabaseClaim/test-database
+        condition: Ready
+        timeout: 5m
+      
+      # Step 3: Verify managed resources
+      - name: verify-managed-resources
+        action: verify
+        expected:
+          resources:
+            - kind: DBInstance
+              name: test-database
+              condition: Ready
+      
+      # Step 4: Verify cloud resource
+      - name: verify-cloud-resource
+        action: verify-cloud
+        provider: aws
+        resource: rds
+        name: test-database
+      
+      # Step 5: Cleanup
+      - name: cleanup
+        action: delete
+        resource: DatabaseClaim/test-database
+
+---
+# ============================================
+# Integration Test Script
+# ============================================
+
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: integration-test-script
+  namespace: test
+data:
+  test.sh: |
+    #!/bin/bash
+    set -e
+    
+    echo "Running integration tests..."
+    
+    # Test 1: Database creation
+    echo "Test 1: Creating database..."
+    kubectl apply -f test-database.yaml
+    
+    echo "Waiting for database to be ready..."
+    kubectl wait --for=condition=Ready databaseclaim/test-database --timeout=5m
+    
+    echo "Verifying managed resources..."
+    MANAGED_COUNT=$(kubectl get managed -l crossplane.io/composite=test-database --no-headers | wc -l)
+    if [ "$MANAGED_COUNT" -eq 1 ]; then
+      echo "✓ Managed resource created"
+    else
+      echo "✗ Expected 1 managed resource, got $MANAGED_COUNT"
+      exit 1
+    fi
+    
+    echo "Verifying cloud resource (if AWS credentials available)..."
+    if command -v aws &> /dev/null; then
+      aws rds describe-db-instances --db-instance-identifier test-database || {
+        echo "⚠ Could not verify cloud resource (may need credentials)"
+      }
+    fi
+    
+    # Test 2: Network creation
+    echo "Test 2: Creating network..."
+    kubectl apply -f test-network.yaml
+    kubectl wait --for=condition=Ready networkclaim/test-vpc --timeout=5m
+    echo "✓ Network created"
+    
+    # Cleanup
+    echo "Cleaning up..."
+    kubectl delete databaseclaim test-database --ignore-not-found
+    kubectl delete networkclaim test-vpc --ignore-not-found
+    
+    echo "✓ All integration tests passed"
+
+---
+# ============================================
+# KUTTL Test Example
+# ============================================
+
+apiVersion: kuttl.dev/v1beta1
+kind: TestSuite
+metadata:
+  name: crossplane-integration-tests
+spec:
+  testDirs:
+    - database-creation
+    - network-creation
+    - resource-updates
+  timeouts:
+    testSuite: 20m
+    test: 10m
+    step: 2m
+  parallel: 1
+  skipDelete: false
+
+---
+# Test file: database-creation/00-assert.yaml
+apiVersion: kuttl.dev/v1beta1
+kind: TestStep
+metadata:
+  name: create-database
+spec:
+  apply:
+    - apiVersion: database.example.org/v1alpha1
+      kind: DatabaseClaim
+      metadata:
+        name: test-database
+      spec:
+        engine: postgres
+        instanceClass: db.t3.medium
+  
+  assert:
+    - apiVersion: database.example.org/v1alpha1
+      kind: DatabaseClaim
+      metadata:
+        name: test-database
+      status:
+        conditions:
+          - type: Ready
+            status: "True"

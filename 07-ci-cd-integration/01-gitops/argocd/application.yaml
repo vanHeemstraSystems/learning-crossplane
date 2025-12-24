@@ -1,2 +1,112 @@
-# ArgoCD Application
-# Placeholder file - to be populated with actual content
+# ArgoCD Application Example
+# Application that syncs Crossplane configurations from Git
+
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: crossplane-configs
+  namespace: argocd
+  finalizers:
+    - resources-finalizer.argocd.argoproj.io
+spec:
+  project: default
+  
+  # Source repository
+  source:
+    repoURL: https://github.com/your-org/crossplane-configs
+    targetRevision: main
+    path: .
+    
+    # Directory or Helm chart
+    directory:
+      recurse: true
+      include: '*.yaml'
+      exclude: '*.md'
+  
+  # Destination cluster
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: crossplane-system
+  
+  # Sync policy
+  syncPolicy:
+    # Automated sync
+    automated:
+      prune: true      # Remove resources deleted from Git
+      selfHeal: true   # Auto-correct drift
+      allowEmpty: false
+    
+    # Sync options
+    syncOptions:
+      - CreateNamespace=true  # Create namespace if it doesn't exist
+      - PruneLast=true        # Prune resources last
+      - RespectIgnoreDifferences=true
+    
+    # Retry on failure
+    retry:
+      limit: 5
+      backoff:
+        duration: 5s
+        factor: 2
+        maxDuration: 3m
+  
+  # Ignore differences (for fields managed outside GitOps)
+  ignoreDifferences:
+    - group: ""
+      kind: Secret
+      jsonPointers:
+        - /data
+    - group: apiextensions.crossplane.io
+      kind: ProviderConfig
+      jsonPointers:
+        - /spec/credentials
+
+---
+# ============================================
+# Example: Environment-Specific Application
+# ============================================
+
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: crossplane-production
+  namespace: argocd
+spec:
+  project: default
+  source:
+    repoURL: https://github.com/your-org/crossplane-configs
+    targetRevision: main
+    path: production
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: crossplane-system
+  syncPolicy:
+    automated:
+      prune: true
+      selfHeal: true
+    syncOptions:
+      - CreateNamespace=true
+
+---
+# ============================================
+# Example: Staging Environment
+# ============================================
+
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: crossplane-staging
+  namespace: argocd
+spec:
+  project: default
+  source:
+    repoURL: https://github.com/your-org/crossplane-configs
+    targetRevision: staging
+    path: staging
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: crossplane-system
+  syncPolicy:
+    automated:
+      prune: true
+      selfHeal: true

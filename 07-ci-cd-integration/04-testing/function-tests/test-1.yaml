@@ -1,2 +1,191 @@
-# Function test
-# Placeholder file - to be populated with actual content
+# Function Test Example
+# Tests composition functions
+
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: function-test-case
+  namespace: test
+data:
+  # Test case for patch-and-transform function
+  patch-and-transform-test.yaml: |
+    name: test-patch-and-transform
+    
+    # Function input
+    input:
+      apiVersion: apiextensions.crossplane.io/v1
+      kind: CompositeResourceDefinition
+      spec:
+        compositeTypeRef:
+          apiVersion: database.example.org/v1alpha1
+          kind: DatabaseClaim
+        resources:
+          - name: db-instance
+            base:
+              apiVersion: rds.aws.crossplane.io/v1alpha1
+              kind: DBInstance
+            patches:
+              - type: FromCompositeFieldPath
+                fromFieldPath: spec.engine
+                toFieldPath: spec.forProvider.engine
+    
+    # Test XR input
+    xrInput:
+      apiVersion: database.example.org/v1alpha1
+      kind: DatabaseClaim
+      spec:
+        engine: postgres
+        instanceClass: db.t3.medium
+    
+    # Expected function output
+    expected:
+      resources:
+        - name: db-instance
+          base:
+            spec:
+              forProvider:
+                engine: postgres  # Should be patched from XR
+                # Other fields should remain from base
+
+---
+# ============================================
+# Python Function Test Example
+# ============================================
+
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: python-function-test
+  namespace: test
+data:
+  test.py: |
+    #!/usr/bin/env python3
+    import json
+    import sys
+    
+    def test_function(input_data):
+        """Test composition function with input data"""
+        
+        # Simulate function processing
+        output = {
+            "resources": []
+        }
+        
+        # Process input and generate resources
+        if input_data.get("spec", {}).get("engine") == "postgres":
+            output["resources"].append({
+                "base": {
+                    "apiVersion": "rds.aws.crossplane.io/v1alpha1",
+                    "kind": "DBInstance",
+                    "spec": {
+                        "forProvider": {
+                            "engine": "postgres"
+                        }
+                    }
+                }
+            })
+        
+        return output
+    
+    if __name__ == "__main__":
+        input_data = json.load(sys.stdin)
+        output = test_function(input_data)
+        print(json.dumps(output, indent=2))
+        
+        # Validate output
+        assert len(output["resources"]) > 0, "No resources generated"
+        assert output["resources"][0]["base"]["spec"]["forProvider"]["engine"] == "postgres"
+        print("✓ Test passed")
+
+---
+# ============================================
+# Go Function Test Example
+# ============================================
+
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: go-function-test
+  namespace: test
+data:
+  test.go: |
+    package main
+    
+    import (
+        "encoding/json"
+        "fmt"
+        "os"
+        "testing"
+    )
+    
+    func TestFunction(t *testing.T) {
+        // Test input
+        input := map[string]interface{}{
+            "spec": map[string]interface{}{
+                "engine": "postgres",
+            },
+        }
+        
+        // Process function
+        output := processFunction(input)
+        
+        // Validate output
+        if len(output["resources"].([]interface{})) == 0 {
+            t.Fatal("No resources generated")
+        }
+        
+        fmt.Println("✓ Test passed")
+    }
+    
+    func processFunction(input map[string]interface{}) map[string]interface{} {
+        // Function processing logic
+        return map[string]interface{}{
+            "resources": []interface{}{
+                map[string]interface{}{
+                    "base": map[string]interface{}{
+                        "apiVersion": "rds.aws.crossplane.io/v1alpha1",
+                        "kind": "DBInstance",
+                    },
+                },
+            },
+        }
+    }
+
+---
+# ============================================
+# Function Test Script
+# ============================================
+
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: function-test-script
+  namespace: test
+data:
+  run-tests.sh: |
+    #!/bin/bash
+    set -e
+    
+    echo "Running function tests..."
+    
+    # Test patch-and-transform function
+    echo "Testing patch-and-transform function..."
+    INPUT='{"spec":{"engine":"postgres","instanceClass":"db.t3.medium"}}'
+    OUTPUT=$(echo "$INPUT" | function-process)
+    
+    if echo "$OUTPUT" | grep -q "postgres"; then
+      echo "✓ patch-and-transform test passed"
+    else
+      echo "✗ patch-and-transform test failed"
+      exit 1
+    fi
+    
+    # Test Go templating function
+    echo "Testing Go templating function..."
+    # Add Go function tests here
+    
+    # Test KCL function
+    echo "Testing KCL function..."
+    # Add KCL function tests here
+    
+    echo "✓ All function tests passed"

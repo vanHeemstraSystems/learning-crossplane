@@ -1,2 +1,138 @@
-# ArgoCD App of Apps
-# Placeholder file - to be populated with actual content
+# ArgoCD App of Apps Pattern
+# Parent application that manages multiple child applications
+
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: crossplane-apps
+  namespace: argocd
+  finalizers:
+    - resources-finalizer.argocd.argoproj.io
+spec:
+  project: default
+  
+  # Source: Directory containing child application definitions
+  source:
+    repoURL: https://github.com/your-org/crossplane-configs
+    targetRevision: main
+    path: argocd/apps
+  
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: argocd
+  
+  syncPolicy:
+    automated:
+      prune: true
+      selfHeal: true
+
+---
+# ============================================
+# Child Application: Crossplane Core
+# ============================================
+# File: argocd/apps/crossplane-core.yaml
+
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: crossplane-core
+  namespace: argocd
+spec:
+  project: default
+  source:
+    repoURL: https://github.com/your-org/crossplane-configs
+    targetRevision: main
+    path: core
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: crossplane-system
+  syncPolicy:
+    automated:
+      prune: true
+      selfHeal: true
+
+---
+# ============================================
+# Child Application: XRDs
+# ============================================
+# File: argocd/apps/xrds.yaml
+
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: crossplane-xrds
+  namespace: argocd
+spec:
+  project: default
+  source:
+    repoURL: https://github.com/your-org/crossplane-configs
+    targetRevision: main
+    path: xrds
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: crossplane-system
+  syncPolicy:
+    automated:
+      prune: true
+      selfHeal: true
+
+---
+# ============================================
+# Child Application: Compositions
+# ============================================
+# File: argocd/apps/compositions.yaml
+
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: crossplane-compositions
+  namespace: argocd
+spec:
+  project: default
+  source:
+    repoURL: https://github.com/your-org/crossplane-configs
+    targetRevision: main
+    path: compositions
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: crossplane-system
+  syncPolicy:
+    automated:
+      prune: true
+      selfHeal: true
+
+---
+# ============================================
+# Child Application: Production Resources
+# ============================================
+# File: argocd/apps/production.yaml
+
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: crossplane-production
+  namespace: argocd
+spec:
+  project: default
+  source:
+    repoURL: https://github.com/your-org/crossplane-configs
+    targetRevision: main
+    path: apps/production
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: production
+  syncPolicy:
+    # Manual sync for production
+    syncOptions:
+      - CreateNamespace=true
+
+---
+# ============================================
+# App of Apps Benefits
+# ============================================
+#
+# 1. Centralized Management: Manage all apps from one place
+# 2. Scalability: Easy to add new applications
+# 3. Organization: Group related applications
+# 4. Consistency: Standardized application configuration
+# 5. Multi-Environment: Separate apps per environment

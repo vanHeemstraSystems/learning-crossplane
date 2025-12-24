@@ -1,2 +1,147 @@
-# Flux Kustomization
-# Placeholder file - to be populated with actual content
+# Flux Kustomization Example
+# Syncs Crossplane configurations from Git
+
+apiVersion: kustomize.toolkit.fluxcd.io/v1
+kind: Kustomization
+metadata:
+  name: crossplane-configs
+  namespace: flux-system
+spec:
+  # Sync interval
+  interval: 10m
+  
+  # Path in Git repository
+  path: ./
+  
+  # Prune resources deleted from Git
+  prune: true
+  
+  # Source GitRepository reference
+  sourceRef:
+    kind: GitRepository
+    name: crossplane-configs
+  
+  # Validation
+  validation: client
+  
+  # Health checks
+  healthChecks:
+    - apiVersion: apps/v1
+      kind: Deployment
+      name: crossplane
+      namespace: crossplane-system
+    - apiVersion: apiextensions.crossplane.io/v1
+      kind: CompositeResourceDefinition
+      name: databases.database.example.org
+  
+  # Wait for dependencies
+  wait: true
+  
+  # Timeout
+  timeout: 5m
+  
+  # Retry on failure
+  retryInterval: 2m
+
+---
+# ============================================
+# GitRepository Source
+# ============================================
+
+apiVersion: source.toolkit.fluxcd.io/v1
+kind: GitRepository
+metadata:
+  name: crossplane-configs
+  namespace: flux-system
+spec:
+  # Repository URL
+  url: https://github.com/your-org/crossplane-configs
+  
+  # Branch
+  ref:
+    branch: main
+  
+  # Poll interval
+  interval: 1m
+  
+  # Secret reference (for private repos)
+  # secretRef:
+  #   name: git-credentials
+
+---
+# ============================================
+# Example: Environment-Specific Kustomization
+# ============================================
+
+apiVersion: kustomize.toolkit.fluxcd.io/v1
+kind: Kustomization
+metadata:
+  name: crossplane-production
+  namespace: flux-system
+spec:
+  interval: 10m
+  path: ./production
+  prune: true
+  sourceRef:
+    kind: GitRepository
+    name: crossplane-configs
+  validation: client
+
+---
+# ============================================
+# Example: Multi-Path Kustomization
+# ============================================
+
+apiVersion: kustomize.toolkit.fluxcd.io/v1
+kind: Kustomization
+metadata:
+  name: crossplane-xrds
+  namespace: flux-system
+spec:
+  interval: 10m
+  path: ./xrds
+  prune: true
+  sourceRef:
+    kind: GitRepository
+    name: crossplane-configs
+  validation: client
+  dependsOn:
+    - name: crossplane-core
+
+---
+# ============================================
+# Example: Dependency Management
+# ============================================
+
+apiVersion: kustomize.toolkit.fluxcd.io/v1
+kind: Kustomization
+metadata:
+  name: crossplane-compositions
+  namespace: flux-system
+spec:
+  interval: 10m
+  path: ./compositions
+  prune: true
+  sourceRef:
+    kind: GitRepository
+    name: crossplane-configs
+  validation: client
+  # Wait for XRDs to be ready
+  dependsOn:
+    - name: crossplane-xrds
+
+---
+# ============================================
+# Flux Kustomization Best Practices
+# ============================================
+#
+# 1. Use appropriate intervals (not too frequent)
+# 2. Enable pruning for cleanup
+# 3. Set up health checks
+# 4. Use dependencies for ordering
+# 5. Enable validation
+# 6. Set timeouts appropriately
+# 7. Use GitRepository sources
+# 8. Organize by path
+# 9. Use namespaces appropriately
+# 10. Monitor sync status

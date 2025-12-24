@@ -1,2 +1,115 @@
-# GitHub Action: Validate Composition
-# Placeholder file - to be populated with actual content
+# GitHub Actions Workflow: Validate Composition
+# Validates Crossplane compositions and XRDs
+
+name: Validate Crossplane Resources
+
+on:
+  pull_request:
+    branches: [main, staging]
+    paths:
+      - '**/*.yaml'
+      - '**/*.yml'
+  push:
+    branches: [main]
+    paths:
+      - '**/*.yaml'
+      - '**/*.yml'
+
+jobs:
+  validate-yaml:
+    name: Validate YAML Syntax
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+      
+      - name: Install yamllint
+        run: |
+          pip install yamllint
+      
+      - name: Validate YAML syntax
+        run: |
+          yamllint -d '{extends: default, rules: {line-length: {max: 200}}}' .
+      
+      - name: Validate YAML files
+        run: |
+          find . -name "*.yaml" -o -name "*.yml" | while read file; do
+            python3 -c "import yaml; yaml.safe_load(open('$file'))" || exit 1
+          done
+
+  validate-xrd:
+    name: Validate XRDs
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+      
+      - name: Set up kubectl
+        uses: azure/setup-kubectl@v3
+        with:
+          version: 'latest'
+      
+      - name: Validate XRDs
+        run: |
+          find . -name "*xrd*.yaml" | while read file; do
+            echo "Validating $file"
+            kubectl apply --dry-run=client -f "$file" || exit 1
+          done
+
+  validate-composition:
+    name: Validate Compositions
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+      
+      - name: Set up kubectl
+        uses: azure/setup-kubectl@v3
+        with:
+          version: 'latest'
+      
+      - name: Validate Compositions
+        run: |
+          find . -name "*composition*.yaml" | while read file; do
+            echo "Validating $file"
+            kubectl apply --dry-run=client -f "$file" || exit 1
+          done
+
+  validate-all:
+    name: Validate All Resources
+    runs-on: ubuntu-latest
+    needs: [validate-yaml, validate-xrd, validate-composition]
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+      
+      - name: Set up kubectl
+        uses: azure/setup-kubectl@v3
+        with:
+          version: 'latest'
+      
+      - name: Validate all YAML files
+        run: |
+          kubectl apply --dry-run=client -f . || exit 1
+      
+      - name: Check for required labels
+        run: |
+          find . -name "*.yaml" | xargs grep -l "kind:" | while read file; do
+            if ! grep -q "labels:" "$file"; then
+              echo "WARNING: $file missing labels"
+            fi
+          done
+
+  policy-check:
+    name: Policy Check (OPA/Kyverno)
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+      
+      - name: Install conftest
+        uses: open-policy-agent/conftest-action@v1
+      
+      - name: Run conftest
+        run: |
+          conftest test --policy ./policies/ .

@@ -1,2 +1,145 @@
-# Flux HelmRelease
-# Placeholder file - to be populated with actual content
+# Flux HelmRelease Example
+# Manages Crossplane Helm chart deployment
+
+apiVersion: helm.toolkit.fluxcd.io/v2beta1
+kind: HelmRelease
+metadata:
+  name: crossplane
+  namespace: crossplane-system
+spec:
+  # Sync interval
+  interval: 1h
+  
+  # Chart specification
+  chart:
+    spec:
+      chart: crossplane
+      sourceRef:
+        kind: HelmRepository
+        name: crossplane-stable
+      version: ">=1.14.0"
+  
+  # Release values
+  values:
+    replicaCount: 2
+    
+    image:
+      repository: crossplane/crossplane
+      tag: v1.14.0
+    
+    resources:
+      limits:
+        cpu: 2000m
+        memory: 2Gi
+      requests:
+        cpu: 1000m
+        memory: 1Gi
+    
+    args:
+      - --max-concurrent-reconciles=10
+  
+  # Upgrade strategy
+  upgrade:
+    remediation:
+      remediateLastFailure: true
+    timeout: 10m
+  
+  # Rollback on failure
+  rollback:
+    enable: true
+    timeout: 5m
+
+---
+# ============================================
+# HelmRepository Source
+# ============================================
+
+apiVersion: source.toolkit.fluxcd.io/v1
+kind: HelmRepository
+metadata:
+  name: crossplane-stable
+  namespace: flux-system
+spec:
+  url: https://charts.crossplane.io/stable
+  interval: 1h
+
+---
+# ============================================
+# Example: Provider HelmRelease
+# ============================================
+
+apiVersion: helm.toolkit.fluxcd.io/v2beta1
+kind: HelmRelease
+metadata:
+  name: provider-aws
+  namespace: crossplane-system
+spec:
+  interval: 1h
+  chart:
+    spec:
+      chart: provider-aws-aws
+      sourceRef:
+        kind: HelmRepository
+        name: upbound
+      version: ">=0.45.0"
+  values:
+    resources:
+      limits:
+        cpu: 1000m
+        memory: 1Gi
+      requests:
+        cpu: 200m
+        memory: 256Mi
+
+---
+# ============================================
+# Example: Upbound Helm Repository
+# ============================================
+
+apiVersion: source.toolkit.fluxcd.io/v1
+kind: HelmRepository
+metadata:
+  name: upbound
+  namespace: flux-system
+spec:
+  url: https://charts.upbound.io/stable
+  interval: 1h
+
+---
+# ============================================
+# Example: Dependency Between Releases
+# ============================================
+
+apiVersion: helm.toolkit.fluxcd.io/v2beta1
+kind: HelmRelease
+metadata:
+  name: provider-aws
+  namespace: crossplane-system
+spec:
+  interval: 1h
+  dependsOn:
+    - name: crossplane
+      namespace: crossplane-system
+  chart:
+    spec:
+      chart: provider-aws-aws
+      sourceRef:
+        kind: HelmRepository
+        name: upbound
+      version: ">=0.45.0"
+
+---
+# ============================================
+# Flux HelmRelease Best Practices
+# ============================================
+#
+# 1. Use version constraints (>=, ~>, etc.)
+# 2. Set appropriate intervals
+# 3. Enable rollback on failure
+# 4. Configure upgrade timeouts
+# 5. Use dependencies for ordering
+# 6. Monitor release status
+# 7. Test upgrades in staging first
+# 8. Document values changes
+# 9. Use HelmRepository sources
+# 10. Enable remediation

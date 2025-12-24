@@ -1,2 +1,132 @@
-# Composition test
-# Placeholder file - to be populated with actual content
+# Composition Test Example
+# Tests that a composition renders correctly
+
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: composition-test-case
+  namespace: test
+data:
+  test-case.yaml: |
+    # Test Case: Database Composition
+    name: test-postgres-composition
+    
+    # Input XR
+    input:
+      apiVersion: database.example.org/v1alpha1
+      kind: DatabaseClaim
+      metadata:
+        name: test-database
+        namespace: default
+      spec:
+        engine: postgres
+        version: "14"
+        instanceClass: db.t3.medium
+        storage: 100
+        environment: production
+        enableBackups: true
+    
+    # Expected output
+    expected:
+      # Expected number of managed resources
+      resourceCount: 1
+      
+      # Expected resources
+      resources:
+        - apiVersion: rds.aws.crossplane.io/v1alpha1
+          kind: DBInstance
+          metadata:
+            name: test-database
+          spec:
+            forProvider:
+              engine: postgres
+              engineVersion: "14"
+              dbInstanceClass: db.t3.medium
+              allocatedStorage: 100
+              backupRetentionPeriod: 7
+              storageEncrypted: true
+              tags:
+                environment: production
+                managed-by: crossplane
+
+---
+# ============================================
+# Test Script Example
+# ============================================
+
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: composition-test-script
+  namespace: test
+data:
+  test.sh: |
+    #!/bin/bash
+    set -e
+    
+    echo "Testing composition rendering..."
+    
+    # Apply composition
+    kubectl apply -f composition.yaml
+    
+    # Create test XR
+    kubectl apply -f test-xr.yaml
+    
+    # Wait for composition to render
+    sleep 10
+    
+    # Check managed resources were created
+    MANAGED_RESOURCES=$(kubectl get managed -l crossplane.io/composite=test-database --no-headers | wc -l)
+    
+    if [ "$MANAGED_RESOURCES" -eq 1 ]; then
+      echo "✓ Correct number of managed resources created"
+    else
+      echo "✗ Expected 1 managed resource, got $MANAGED_RESOURCES"
+      exit 1
+    fi
+    
+    # Verify resource spec
+    kubectl get dbinstance test-database -o jsonpath='{.spec.forProvider.engine}' | grep -q postgres || {
+      echo "✗ Engine not set correctly"
+      exit 1
+    }
+    
+    echo "✓ All tests passed"
+
+---
+# ============================================
+# Test Case: Network Composition
+# ============================================
+
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: network-composition-test
+  namespace: test
+data:
+  test-case.yaml: |
+    name: test-vpc-composition
+    
+    input:
+      apiVersion: network.example.org/v1alpha1
+      kind: NetworkClaim
+      metadata:
+        name: test-vpc
+      spec:
+        cidr: "10.0.0.0/16"
+        region: us-east-1
+        environment: production
+    
+    expected:
+      resourceCount: 2  # VPC + Internet Gateway
+      resources:
+        - kind: VPC
+          spec:
+            forProvider:
+              cidrBlock: "10.0.0.0/16"
+              enableDnsHostnames: true
+              enableDnsSupport: true
+        - kind: InternetGateway
+          spec:
+            forProvider:
+              region: us-east-1

@@ -1,2 +1,193 @@
-# GitLab CI Pipeline
-# Placeholder file - to be populated with actual content
+# GitLab CI/CD Pipeline for Crossplane
+# Validates, tests, and deploys Crossplane resources
+
+stages:
+  - validate
+  - test
+  - build
+  - deploy
+
+variables:
+  KUBECTL_VERSION: "latest"
+  K8S_VERSION: "1.28"
+
+# ============================================
+# Validation Jobs
+# ============================================
+
+validate:yaml:
+  stage: validate
+  image: python:3.11
+  before_script:
+    - pip install yamllint
+  script:
+    - yamllint -d '{extends: default, rules: {line-length: {max: 200}}}' .
+    - find . -name "*.yaml" -o -name "*.yml" | while read file; do python3 -c "import yaml; yaml.safe_load(open('$file'))"; done
+  rules:
+    - if: $CI_PIPELINE_SOURCE == "merge_request_event"
+    - if: $CI_COMMIT_BRANCH == "main"
+
+validate:xrd:
+  stage: validate
+  image: bitnami/kubectl:latest
+  script:
+    - find . -name "*xrd*.yaml" | while read file; do
+        echo "Validating $file"
+        kubectl apply --dry-run=client -f "$file"
+      done
+  rules:
+    - if: $CI_PIPELINE_SOURCE == "merge_request_event"
+    - if: $CI_COMMIT_BRANCH == "main"
+
+validate:composition:
+  stage: validate
+  image: bitnami/kubectl:latest
+  script:
+    - find . -name "*composition*.yaml" | while read file; do
+        echo "Validating $file"
+        kubectl apply --dry-run=client -f "$file"
+      done
+  rules:
+    - if: $CI_PIPELINE_SOURCE == "merge_request_event"
+    - if: $CI_COMMIT_BRANCH == "main"
+
+validate:all:
+  stage: validate
+  image: bitnami/kubectl:latest
+  script:
+    - kubectl apply --dry-run=client -f .
+  rules:
+    - if: $CI_PIPELINE_SOURCE == "merge_request_event"
+    - if: $CI_COMMIT_BRANCH == "main"
+
+# ============================================
+# Testing Jobs
+# ============================================
+
+test:unit:
+  stage: test
+  image: python:3.11
+  script:
+    - pip install -r tests/requirements.txt
+    - pytest tests/unit/
+  coverage: '/TOTAL.*\s+(\d+%)$/'
+  artifacts:
+    reports:
+      coverage_report:
+        coverage_format: cobertura
+        path: coverage.xml
+  rules:
+    - if: $CI_PIPELINE_SOURCE == "merge_request_event"
+    - if: $CI_COMMIT_BRANCH == "main"
+
+test:integration:
+  stage: test
+  image: bitnami/kubectl:latest
+  services:
+    - docker:dind
+  before_script:
+    - apk add --no-cache docker-compose
+    - kind create cluster --name test-cluster --wait 5m || true
+  script:
+    - |
+      helm repo add crossplane-stable https://charts.crossplane.io/stable
+      helm repo update
+      helm install crossplane crossplane-stable/crossplane \
+        --namespace crossplane-system \
+        --create-namespace \
+        --wait
+    - kubectl wait --for=condition=Available deployment/crossplane -n crossplane-system --timeout=5m
+    - ./tests/run-integration-tests.sh
+  after_script:
+    - kind delete cluster --name test-cluster || true
+  rules:
+    - if: $CI_COMMIT_BRANCH == "main"
+    - if: $CI_PIPELINE_SOURCE == "merge_request_event"
+
+test:functions:
+  stage: test
+  image: golang:1.21
+  script:
+    - cd functions && find . -name "test.sh" -exec bash {} \;
+  rules:
+    - if: $CI_PIPELINE_SOURCE == "merge_request_event"
+    - if: $CI_COMMIT_BRANCH == "main"
+
+# ============================================
+# Build Jobs
+# ============================================
+
+build:functions:
+  stage: build
+  image: docker:latest
+  services:
+    - docker:dind
+  before_script:
+    - docker login -u $CI_REGISTRY_USER -p $CI_REGISTRY_PASSWORD $CI_REGISTRY
+  script:
+    - |
+      for function in functions/*/; do
+        if [ -f "${function}Dockerfile" ]; then
+          FUNCTION_NAME=$(basename $function)
+          docker build -t $CI_REGISTRY_IMAGE/$FUNCTION_NAME:$CI_COMMIT_SHORT_SHA $function
+          docker build -t $CI_REGISTRY_IMAGE/$FUNCTION_NAME:latest $function
+          docker push $CI_REGISTRY_IMAGE/$FUNCTION_NAME:$CI_COMMIT_SHORT_SHA
+          docker push $CI_REGISTRY_IMAGE/$FUNCTION_NAME:latest
+        fi
+      done
+  rules:
+    - if: $CI_COMMIT_BRANCH == "main"
+
+# ============================================
+# Deployment Jobs
+# ============================================
+
+deploy:staging:
+  stage: deploy
+  image: bitnami/kubectl:latest
+  environment:
+    name: staging
+    url: https://staging.example.com
+  before_script:
+    - kubectl version --client
+    - echo "$STAGING_KUBECONFIG" | base64 -d > kubeconfig
+    - export KUBECONFIG=./kubeconfig
+  script:
+    - kubectl apply -f xrds/
+    - kubectl apply -f compositions/
+    - kubectl apply -f provider-configs/
+    - kubectl get xrd
+    - kubectl get composition
+  rules:
+    - if: $CI_COMMIT_BRANCH == "main"
+
+deploy:production:
+  stage: deploy
+  image: bitnami/kubectl:latest
+  environment:
+    name: production
+    url: https://production.example.com
+  before_script:
+    - kubectl version --client
+    - echo "$PRODUCTION_KUBECONFIG" | base64 -d > kubeconfig
+    - export KUBECONFIG=./kubeconfig
+  script:
+    - kubectl apply -f xrds/
+    - kubectl apply -f compositions/
+    - kubectl apply -f provider-configs/
+    - kubectl get xrd
+    - kubectl get composition
+  when: manual
+  rules:
+    - if: $CI_COMMIT_BRANCH == "main"
+
+# ============================================
+# Cleanup Job
+# ============================================
+
+cleanup:
+  stage: .post
+  image: docker:latest
+  script:
+    - echo "Cleaning up..."
+  when: always
