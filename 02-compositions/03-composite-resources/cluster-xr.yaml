@@ -1,2 +1,52 @@
-# Cluster-scoped composite resource
-# Placeholder file - to be populated with actual content
+# Cluster-Scoped Composite Resource (XR) Example
+# Cluster-scoped XRs exist at the cluster level, not in namespaces
+# Use when resources are shared across namespaces
+
+apiVersion: cluster.example.org/v1alpha1
+kind: Cluster
+metadata:
+  name: production-cluster
+  # No namespace - cluster-scoped!
+  labels:
+    environment: production
+    provider: aws
+    managed-by: crossplane
+spec:
+  # Required fields (defined in XRD)
+  name: production-k8s
+  provider: aws
+  region: us-east-1
+  
+  # Optional fields
+  kubernetesVersion: "1.28"
+  
+  # Node configuration
+  nodeConfig:
+    instanceType: t3.medium
+    minNodes: 2
+    maxNodes: 10
+    desiredNodes: 3
+  
+  # Write connection secrets
+  writeConnectionSecretsToRef:
+    name: cluster-connection
+    namespace: default
+---
+# Example: Development Cluster
+apiVersion: cluster.example.org/v1alpha1
+kind: Cluster
+metadata:
+  name: development-cluster
+  labels:
+    environment: development
+    provider: aws
+spec:
+  name: dev-k8s
+  provider: aws
+  region: us-east-1
+  kubernetesVersion: "1.28"
+  nodeConfig:
+    instanceType: t3.small
+    minNodes: 1
+    maxNodes: 3
+    desiredNodes: 1

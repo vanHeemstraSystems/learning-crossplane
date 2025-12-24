@@ -1,2 +1,56 @@
-# Namespaced composite resource
-# Placeholder file - to be populated with actual content
+# Namespaced Composite Resource (XR) Example
+# Crossplane v2 default - XRs are namespaced by default
+# This creates a Network resource in a specific namespace
+
+apiVersion: network.example.org/v1alpha1
+kind: Network
+metadata:
+  name: production-network
+  namespace: production  # Namespace-scoped
+  labels:
+    environment: production
+    team: platform
+    managed-by: crossplane
+spec:
+  # Required fields (defined in XRD)
+  cidr: 10.0.0.0/16
+  region: us-east-1
+  
+  # Optional fields
+  environment: production
+  enableDns: true
+  
+  # Write connection secrets
+  writeConnectionSecretsToRef:
+    name: network-connection
+    namespace: production
+---
+# Example: Development Network
+apiVersion: network.example.org/v1alpha1
+kind: Network
+metadata:
+  name: development-network
+  namespace: development
+  labels:
+    environment: development
+    team: platform
+spec:
+  cidr: 10.1.0.0/16
+  region: us-east-1
+  environment: development
+  enableDns: true
+---
+# Example: Staging Network
+apiVersion: network.example.org/v1alpha1
+kind: Network
+metadata:
+  name: staging-network
+  namespace: staging
+  labels:
+    environment: staging
+    team: platform
+spec:
+  cidr: 10.2.0.0/16
+  region: us-west-2
+  environment: staging
+  enableDns: true

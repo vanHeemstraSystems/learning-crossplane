@@ -1,2 +1,237 @@
-# Resource templates example
-# Placeholder file - to be populated with actual content
+# Resource Templates Examples
+# Resource templates define the base configuration for managed resources
+
+# ============================================
+# Example 1: Simple Resource Template
+# ============================================
+
+apiVersion: apiextensions.crossplane.io/v1
+kind: Composition
+metadata:
+  name: bucket-simple
+spec:
+  compositeTypeRef:
+    apiVersion: storage.example.org/v1alpha1
+    kind: Bucket
+  
+  resources:
+    - name: s3-bucket
+      base:
+        apiVersion: s3.aws.crossplane.io/v1beta1
+        kind: Bucket
+        spec:
+          # Base configuration
+          forProvider:
+            region: us-east-1
+            serverSideEncryptionConfiguration:
+              - rule:
+                  applyServerSideEncryptionByDefault:
+                    sseAlgorithm: AES256
+          # Provider reference
+          providerConfigRef:
+            name: default
+          # Deletion policy
+          deletionPolicy: Delete
+      
+      # Patches to customize from XR
+      patches:
+        - type: FromCompositeFieldPath
+          fromFieldPath: spec.bucketName
+          toFieldPath: spec.forProvider.bucket
+
+---
+# ============================================
+# Example 2: Multi-Resource Template
+# ============================================
+
+apiVersion: apiextensions.crossplane.io/v1
+kind: Composition
+metadata:
+  name: network-complete
+spec:
+  compositeTypeRef:
+    apiVersion: network.example.org/v1alpha1
+    kind: Network
+  
+  resources:
+    # Template 1: VPC
+    - name: vpc
+      base:
+        apiVersion: ec2.aws.crossplane.io/v1beta1
+        kind: VPC
+        spec:
+          forProvider:
+            enableDnsHostnames: true
+            enableDnsSupport: true
+            instanceTenancy: default
+          providerConfigRef:
+            name: default
+          deletionPolicy: Delete
+    
+    # Template 2: Internet Gateway
+    - name: internet-gateway
+      base:
+        apiVersion: ec2.aws.crossplane.io/v1beta1
+        kind: InternetGateway
+        spec:
+          forProvider:
+            # VPC reference will be patched
+          providerConfigRef:
+            name: default
+          deletionPolicy: Delete
+    
+    # Template 3: Route Table
+    - name: route-table
+      base:
+        apiVersion: ec2.aws.crossplane.io/v1beta1
+        kind: RouteTable
+        spec:
+          forProvider:
+            routes:
+              - destinationCidrBlock: 0.0.0.0/0
+                # Gateway reference will be patched
+          providerConfigRef:
+            name: default
+          deletionPolicy: Delete
+
+---
+# ============================================
+# Example 3: Template with Defaults
+# ============================================
+
+apiVersion: apiextensions.crossplane.io/v1
+kind: Composition
+metadata:
+  name: database-defaults
+spec:
+  compositeTypeRef:
+    apiVersion: database.example.org/v1alpha1
+    kind: Database
+  
+  resources:
+    - name: rds-instance
+      base:
+        apiVersion: rds.aws.crossplane.io/v1beta1
+        kind: DBInstance
+        spec:
+          forProvider:
+            # Default values
+            engine: postgres
+            engineVersion: "15.4"
+            allocatedStorage: 20
+            storageType: gp3
+            publiclyAccessible: false
+            backupRetentionPeriod: 7
+            storageEncrypted: true
+            skipFinalSnapshot: false
+          providerConfigRef:
+            name: default
+          # Retain for safety
+          deletionPolicy: Retain
+      
+      patches:
+        # Allow XR to override defaults
+        - type: FromCompositeFieldPath
+          fromFieldPath: spec.engine
+          toFieldPath: spec.forProvider.engine
+        - type: FromCompositeFieldPath
+          fromFieldPath: spec.instanceClass
+          toFieldPath: spec.forProvider.dbInstanceClass
+
+---
+# ============================================
+# Example 4: Template with Labels and Tags
+# ============================================
+
+apiVersion: apiextensions.crossplane.io/v1
+kind: Composition
+metadata:
+  name: network-tagged
+spec:
+  compositeTypeRef:
+    apiVersion: network.example.org/v1alpha1
+    kind: Network
+  
+  resources:
+    - name: vpc
+      base:
+        apiVersion: ec2.aws.crossplane.io/v1beta1
+        kind: VPC
+        metadata:
+          labels:
+            managed-by: crossplane
+            composition: network-tagged
+        spec:
+          forProvider:
+            enableDnsHostnames: true
+            enableDnsSupport: true
+            # Tags will be patched from XR
+            tags:
+              ManagedBy: crossplane
+          providerConfigRef:
+            name: default
+      
+      patches:
+        - type: FromCompositeFieldPath
+          fromFieldPath: spec.cidr
+          toFieldPath: spec.forProvider.cidrBlock
+        # Patch tags from XR
+        - type: FromCompositeFieldPath
+          fromFieldPath: spec.environment
+          toFieldPath: spec.forProvider.tags[Environment]
+
+---
+# ============================================
+# Example 5: Template with Connection Secrets
+# ============================================
+
+apiVersion: apiextensions.crossplane.io/v1
+kind: Composition
+metadata:
+  name: database-with-secrets
+spec:
+  compositeTypeRef:
+    apiVersion: database.example.org/v1alpha1
+    kind: Database
+  
+  # Write connection secrets at composition level
+  writeConnectionSecretsToRef:
+    name: database-connection
+  
+  resources:
+    - name: rds-instance
+      base:
+        apiVersion: rds.aws.crossplane.io/v1beta1
+        kind: DBInstance
+        spec:
+          forProvider:
+            engine: postgres
+            engineVersion: "15.4"
+            allocatedStorage: 20
+          providerConfigRef:
+            name: default
+          # Also write secrets at resource level
+          writeConnectionSecretToRef:
+            name: rds-connection
+            namespace: default
+      
+      patches:
+        - type: FromCompositeFieldPath
+          fromFieldPath: spec.instanceClass
+          toFieldPath: spec.forProvider.dbInstanceClass
+
+---
+# ============================================
+# Best Practices for Resource Templates
+# ============================================
+#
+# 1. Set sensible defaults in base templates
+# 2. Use patches to allow customization
+# 3. Include provider config references
+# 4. Set appropriate deletion policies
+# 5. Add labels and tags for organization
+# 6. Use connection secrets for outputs
+# 7. Document template purpose in metadata
+# 8. Version your templates
+# 9. Test templates thoroughly
+# 10. Keep templates focused and reusable

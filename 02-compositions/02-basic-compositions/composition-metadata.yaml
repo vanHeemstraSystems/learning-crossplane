@@ -1,2 +1,226 @@
-# Composition metadata example
-# Placeholder file - to be populated with actual content
+# Composition Metadata Examples
+# Metadata helps organize and document compositions
+
+# ============================================
+# Example 1: Basic Metadata
+# ============================================
+
+apiVersion: apiextensions.crossplane.io/v1
+kind: Composition
+metadata:
+  name: network-aws
+  labels:
+    provider: aws
+    resource: network
+  annotations:
+    description: "Creates an AWS VPC network"
+spec:
+  compositeTypeRef:
+    apiVersion: network.example.org/v1alpha1
+    kind: Network
+  resources:
+    - name: vpc
+      base:
+        apiVersion: ec2.aws.crossplane.io/v1beta1
+        kind: VPC
+        spec:
+          forProvider:
+            enableDnsHostnames: true
+            enableDnsSupport: true
+          providerConfigRef:
+            name: default
+
+---
+# ============================================
+# Example 2: Environment-Specific Metadata
+# ============================================
+
+apiVersion: apiextensions.crossplane.io/v1
+kind: Composition
+metadata:
+  name: network-aws-production
+  labels:
+    provider: aws
+    resource: network
+    environment: production
+    tier: production
+  annotations:
+    description: "Production-grade AWS VPC with high availability"
+    version: "1.0.0"
+    author: "platform-team"
+spec:
+  compositeTypeRef:
+    apiVersion: network.example.org/v1alpha1
+    kind: Network
+  resources:
+    - name: vpc
+      base:
+        apiVersion: ec2.aws.crossplane.io/v1beta1
+        kind: VPC
+        spec:
+          forProvider:
+            enableDnsHostnames: true
+            enableDnsSupport: true
+          providerConfigRef:
+            name: production-aws
+
+---
+# ============================================
+# Example 3: Multi-Provider Metadata
+# ============================================
+
+# AWS Composition
+apiVersion: apiextensions.crossplane.io/v1
+kind: Composition
+metadata:
+  name: network-aws
+  labels:
+    provider: aws
+    resource: network
+    cloud: aws
+  annotations:
+    description: "AWS VPC network composition"
+    provider: aws
+spec:
+  compositeTypeRef:
+    apiVersion: network.example.org/v1alpha1
+    kind: Network
+  resources:
+    - name: vpc
+      base:
+        apiVersion: ec2.aws.crossplane.io/v1beta1
+        kind: VPC
+        spec:
+          forProvider:
+            enableDnsHostnames: true
+            enableDnsSupport: true
+          providerConfigRef:
+            name: default
+
+---
+# Azure Composition (same XRD, different provider)
+apiVersion: apiextensions.crossplane.io/v1
+kind: Composition
+metadata:
+  name: network-azure
+  labels:
+    provider: azure
+    resource: network
+    cloud: azure
+  annotations:
+    description: "Azure Virtual Network composition"
+    provider: azure
+spec:
+  compositeTypeRef:
+    apiVersion: network.example.org/v1alpha1
+    kind: Network
+  resources:
+    - name: vnet
+      base:
+        apiVersion: network.azure.crossplane.io/v1alpha1
+        kind: VirtualNetwork
+        spec:
+          forProvider:
+            addressSpace:
+              - "10.0.0.0/16"
+          providerConfigRef:
+            name: default
+
+---
+# ============================================
+# Example 4: Versioned Compositions
+# ============================================
+
+apiVersion: apiextensions.crossplane.io/v1
+kind: Composition
+metadata:
+  name: network-aws-v1
+  labels:
+    provider: aws
+    resource: network
+    version: "1.0"
+  annotations:
+    description: "AWS VPC network composition v1.0"
+    version: "1.0.0"
+    changelog: "Initial version"
+spec:
+  compositeTypeRef:
+    apiVersion: network.example.org/v1alpha1
+    kind: Network
+  resources:
+    - name: vpc
+      base:
+        apiVersion: ec2.aws.crossplane.io/v1beta1
+        kind: VPC
+        spec:
+          forProvider:
+            enableDnsHostnames: true
+            enableDnsSupport: true
+          providerConfigRef:
+            name: default
+
+---
+# ============================================
+# Example 5: Comprehensive Metadata
+# ============================================
+
+apiVersion: apiextensions.crossplane.io/v1
+kind: Composition
+metadata:
+  name: database-postgres-production
+  labels:
+    provider: aws
+    resource: database
+    engine: postgres
+    environment: production
+    team: platform
+    cost-center: engineering
+  annotations:
+    description: "Production PostgreSQL database on AWS RDS"
+    version: "2.1.0"
+    author: "platform-team@example.com"
+    documentation: "https://docs.example.com/compositions/database"
+    changelog: |
+      v2.1.0: Added automated backups
+      v2.0.0: Multi-AZ support
+      v1.0.0: Initial release
+    cost-estimate: "$50-100/month"
+    sla: "99.9%"
+spec:
+  compositeTypeRef:
+    apiVersion: database.example.org/v1alpha1
+    kind: Database
+  resources:
+    - name: rds-instance
+      base:
+        apiVersion: rds.aws.crossplane.io/v1beta1
+        kind: DBInstance
+        spec:
+          forProvider:
+            engine: postgres
+            multiAz: true
+            backupRetentionPeriod: 7
+          providerConfigRef:
+            name: production-aws
+
+---
+# ============================================
+# Metadata Best Practices
+# ============================================
+#
+# Labels:
+# - Use consistent label keys
+# - Include provider, resource type, environment
+# - Enable filtering and selection
+#
+# Annotations:
+# - Add descriptions for clarity
+# - Version your compositions
+# - Include documentation links
+# - Add changelog for tracking changes
+#
+# Organization:
+# - Group by provider
+# - Group by environment
+# - Group by resource type
+# - Use consistent naming conventions

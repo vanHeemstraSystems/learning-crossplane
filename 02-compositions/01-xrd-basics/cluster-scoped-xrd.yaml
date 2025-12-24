@@ -1,2 +1,95 @@
-# Cluster-scoped XRD
-# Placeholder file - to be populated with actual content
+# Cluster-Scoped Composite Resource Definition (XRD) Example
+# Cluster-scoped XRs exist at the cluster level, not in namespaces
+# Use when resources are shared across namespaces
+
+apiVersion: apiextensions.crossplane.io/v1
+kind: CompositeResourceDefinition
+metadata:
+  name: clusters.cluster.example.org
+spec:
+  group: cluster.example.org
+  names:
+    kind: Cluster
+    plural: clusters
+    singular: cluster
+  
+  # No claimNames = cluster-scoped
+  # Cluster-scoped resources are not bound to namespaces
+  
+  versions:
+    - name: v1alpha1
+      served: true
+      referenceable: true
+      schema:
+        openAPIV3Schema:
+          type: object
+          properties:
+            spec:
+              type: object
+              required:
+                - name
+                - region
+              properties:
+                # Cluster name
+                name:
+                  type: string
+                  description: "Name of the Kubernetes cluster"
+                  pattern: '^[a-z0-9]([-a-z0-9]*[a-z0-9])?$'
+                
+                # Cloud provider
+                provider:
+                  type: string
+                  description: "Cloud provider"
+                  enum:
+                    - aws
+                    - azure
+                    - gcp
+                
+                # Region
+                region:
+                  type: string
+                  description: "Region where cluster will be created"
+                
+                # Kubernetes version
+                kubernetesVersion:
+                  type: string
+                  description: "Kubernetes version"
+                  default: "1.28"
+                
+                # Node configuration
+                nodeConfig:
+                  type: object
+                  properties:
+                    instanceType:
+                      type: string
+                      description: "Instance type for nodes"
+                    minNodes:
+                      type: integer
+                      minimum: 1
+                      default: 1
+                    maxNodes:
+                      type: integer
+                      minimum: 1
+                      default: 3
+                    desiredNodes:
+                      type: integer
+                      minimum: 1
+                      default: 2
+---
+# Example: Creating a cluster-scoped Cluster resource
+# 
+# apiVersion: cluster.example.org/v1alpha1
+# kind: Cluster
+# metadata:
+#   name: production-cluster
+#   # No namespace - cluster-scoped!
+# spec:
+#   name: production-k8s
+#   provider: aws
+#   region: us-east-1
+#   kubernetesVersion: "1.28"
+#   nodeConfig:
+#     instanceType: t3.medium
+#     minNodes: 2
+#     maxNodes: 10
+#     desiredNodes: 3

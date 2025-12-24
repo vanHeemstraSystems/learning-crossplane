@@ -1,2 +1,161 @@
-# XR with status fields
-# Placeholder file - to be populated with actual content
+# Composite Resource (XR) Status Examples
+# This file demonstrates XR status fields and how to interpret them
+
+# ============================================
+# Example 1: XR with Status
+# ============================================
+# Note: Status is managed by Crossplane, not specified in spec
+# This shows what status looks like after creation
+
+apiVersion: network.example.org/v1alpha1
+kind: Network
+metadata:
+  name: my-network
+  namespace: default
+spec:
+  cidr: 10.0.0.0/16
+  region: us-east-1
+  environment: production
+# Status (managed by Crossplane):
+# status:
+#   # Conditions show overall state
+#   conditions:
+#     - type: Ready
+#       status: "True"
+#       reason: Available
+#       message: "Network is ready"
+#       lastTransitionTime: "2024-12-24T10:00:00Z"
+#     - type: Synced
+#       status: "True"
+#       reason: ReconcileSuccess
+#       message: "Network is synced"
+#       lastTransitionTime: "2024-12-24T10:00:00Z"
+#   
+#   # Resource references show which managed resources were created
+#   resourceRefs:
+#     - apiVersion: ec2.aws.crossplane.io/v1beta1
+#       kind: VPC
+#       name: my-network-vpc
+#     - apiVersion: ec2.aws.crossplane.io/v1beta1
+#       kind: Subnet
+#       name: my-network-subnet
+#   
+#   # Connection secrets reference
+#   connectionDetails:
+#     lastPublishedTime: "2024-12-24T10:00:00Z"
+#   
+#   # Provider-specific status (from composition)
+#   atProvider:
+#     vpcId: vpc-12345678
+#     region: us-east-1
+
+---
+# ============================================
+# Example 2: Checking XR Status
+# ============================================
+# Commands to check XR status:
+
+# Get status summary
+# kubectl get network my-network
+
+# Get detailed status
+# kubectl get network my-network -o yaml
+
+# Get just conditions
+# kubectl get network my-network -o jsonpath='{.status.conditions}'
+
+# Get resource references
+# kubectl get network my-network -o jsonpath='{.status.resourceRefs}'
+
+# Get connection details
+# kubectl get network my-network -o jsonpath='{.status.connectionDetails}'
+
+---
+# ============================================
+# Example 3: XR Status Conditions
+# ============================================
+
+# Ready Condition
+# - type: Ready
+#   status: "True" | "False" | "Unknown"
+#   reason: Available | Creating | Error
+#   message: Human-readable message
+
+# Synced Condition
+# - type: Synced
+#   status: "True" | "False" | "Unknown"
+#   reason: ReconcileSuccess | ReconcileError
+#   message: Sync status message
+
+---
+# ============================================
+# Example 4: XR in Creating State
+# ============================================
+
+apiVersion: network.example.org/v1alpha1
+kind: Network
+metadata:
+  name: creating-network
+  namespace: default
+spec:
+  cidr: 10.0.0.0/16
+  region: us-east-1
+# Status while creating:
+# status:
+#   conditions:
+#     - type: Ready
+#       status: "False"
+#       reason: Creating
+#       message: "Creating network resources"
+#     - type: Synced
+#       status: "False"
+#       reason: ReconcilePending
+#       message: "Waiting for resources to be created"
+
+---
+# ============================================
+# Example 5: XR with Errors
+# ============================================
+
+apiVersion: network.example.org/v1alpha1
+kind: Network
+metadata:
+  name: error-network
+  namespace: default
+spec:
+  cidr: 10.0.0.0/16
+  region: us-east-1
+# Status with error:
+# status:
+#   conditions:
+#     - type: Ready
+#       status: "False"
+#       reason: Error
+#       message: "Failed to create VPC: Invalid CIDR block"
+#     - type: Synced
+#       status: "False"
+#       reason: ReconcileError
+#       message: "Error during reconciliation"
+
+---
+# ============================================
+# Status Field Reference
+# ============================================
+#
+# conditions: Array of condition objects
+#   - type: Condition type (Ready, Synced, etc.)
+#   - status: "True", "False", or "Unknown"
+#   - reason: Machine-readable reason
+#   - message: Human-readable message
+#   - lastTransitionTime: When condition last changed
+#
+# resourceRefs: Array of managed resource references
+#   - apiVersion: Resource API version
+#   - kind: Resource kind
+#   - name: Resource name
+#
+# connectionDetails: Connection secret information
+#   - lastPublishedTime: When secret was last updated
+#
+# atProvider: Provider-specific status fields
+#   - Custom fields from composition

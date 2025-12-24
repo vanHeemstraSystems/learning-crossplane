@@ -1,2 +1,243 @@
-# Basic patch and transform composition
-# Placeholder file - to be populated with actual content
+# Patch and Transform Composition Examples
+# This file demonstrates various patch and transform patterns
+
+# ============================================
+# Example 1: Simple Field Mapping
+# ============================================
+
+apiVersion: apiextensions.crossplane.io/v1
+kind: Composition
+metadata:
+  name: network-aws-simple
+spec:
+  compositeTypeRef:
+    apiVersion: network.example.org/v1alpha1
+    kind: Network
+  
+  resources:
+    - name: vpc
+      base:
+        apiVersion: ec2.aws.crossplane.io/v1beta1
+        kind: VPC
+        spec:
+          forProvider:
+            enableDnsHostnames: true
+            enableDnsSupport: true
+          providerConfigRef:
+            name: default
+      
+      # Simple field mapping
+      patches:
+        - type: FromCompositeFieldPath
+          fromFieldPath: spec.cidr
+          toFieldPath: spec.forProvider.cidrBlock
+        
+        - type: FromCompositeFieldPath
+          fromFieldPath: spec.region
+          toFieldPath: spec.forProvider.region
+
+---
+# ============================================
+# Example 2: Combining Fields
+# ============================================
+
+apiVersion: apiextensions.crossplane.io/v1
+kind: Composition
+metadata:
+  name: network-aws-combined
+spec:
+  compositeTypeRef:
+    apiVersion: network.example.org/v1alpha1
+    kind: Network
+  
+  resources:
+    - name: vpc
+      base:
+        apiVersion: ec2.aws.crossplane.io/v1beta1
+        kind: VPC
+        spec:
+          forProvider:
+            enableDnsHostnames: true
+            enableDnsSupport: true
+          providerConfigRef:
+            name: default
+      
+      patches:
+        # Combine environment and name for resource name
+        - type: CombineFromComposite
+          combine:
+            strategy: string
+            string:
+              fmt: "%s-%s-vpc"
+          toFieldPath: metadata.name
+          fromFieldPath:
+            - spec.environment
+            - metadata.name
+        
+        # Map CIDR
+        - type: FromCompositeFieldPath
+          fromFieldPath: spec.cidr
+          toFieldPath: spec.forProvider.cidrBlock
+        
+        # Map region
+        - type: FromCompositeFieldPath
+          fromFieldPath: spec.region
+          toFieldPath: spec.forProvider.region
+
+---
+# ============================================
+# Example 3: Multi-Resource Composition
+# ============================================
+
+apiVersion: apiextensions.crossplane.io/v1
+kind: Composition
+metadata:
+  name: network-aws-complete
+spec:
+  compositeTypeRef:
+    apiVersion: network.example.org/v1alpha1
+    kind: Network
+  
+  # Write connection secrets
+  writeConnectionSecretsToRef:
+    name: network-connection
+  
+  resources:
+    # Resource 1: VPC
+    - name: vpc
+      base:
+        apiVersion: ec2.aws.crossplane.io/v1beta1
+        kind: VPC
+        spec:
+          forProvider:
+            enableDnsHostnames: true
+            enableDnsSupport: true
+          providerConfigRef:
+            name: default
+      patches:
+        - type: FromCompositeFieldPath
+          fromFieldPath: spec.cidr
+          toFieldPath: spec.forProvider.cidrBlock
+        - type: FromCompositeFieldPath
+          fromFieldPath: spec.region
+          toFieldPath: spec.forProvider.region
+        # Write VPC ID back to XR
+        - type: ToCompositeFieldPath
+          fromFieldPath: status.atProvider.vpcId
+          toFieldPath: status.atProvider.vpcId
+    
+    # Resource 2: Subnet (depends on VPC)
+    - name: subnet
+      base:
+        apiVersion: ec2.aws.crossplane.io/v1beta1
+        kind: Subnet
+        spec:
+          forProvider:
+            mapPublicIpOnLaunch: true
+          providerConfigRef:
+            name: default
+      patches:
+        # Get VPC ID from the VPC resource
+        - type: FromCompositeFieldPath
+          fromFieldPath: status.resources[0].resourceRef.name
+          toFieldPath: spec.forProvider.vpcId
+        - type: FromCompositeFieldPath
+          fromFieldPath: spec.region
+          toFieldPath: spec.forProvider.region
+        # Create subnet CIDR from VPC CIDR
+        - type: CombineFromComposite
+          combine:
+            strategy: string
+            string:
+              fmt: "10.0.1.0/24"  # Derived from VPC CIDR
+          toFieldPath: spec.forProvider.cidrBlock
+
+---
+# ============================================
+# Example 4: Status Patching
+# ============================================
+
+apiVersion: apiextensions.crossplane.io/v1
+kind: Composition
+metadata:
+  name: database-aws
+spec:
+  compositeTypeRef:
+    apiVersion: database.example.org/v1alpha1
+    kind: Database
+  
+  resources:
+    - name: rds
+      base:
+        apiVersion: rds.aws.crossplane.io/v1beta1
+        kind: DBInstance
+        spec:
+          forProvider:
+            engine: postgres
+          providerConfigRef:
+            name: default
+      patches:
+        # Map fields from XR to RDS
+        - type: FromCompositeFieldPath
+          fromFieldPath: spec.instanceClass
+          toFieldPath: spec.forProvider.dbInstanceClass
+        
+        # Write connection info back to XR
+        - type: ToCompositeFieldPath
+          fromFieldPath: status.atProvider.endpoint
+          toFieldPath: status.atProvider.endpoint
+        
+        - type: ToCompositeFieldPath
+          fromFieldPath: status.atProvider.port
+          toFieldPath: status.atProvider.port
+
+---
+# ============================================
+# Example 5: Conditional Patching
+# ============================================
+# Note: Advanced conditional logic requires Composition Functions
+# This shows basic conditional patterns
+
+apiVersion: apiextensions.crossplane.io/v1
+kind: Composition
+metadata:
+  name: network-aws-conditional
+spec:
+  compositeTypeRef:
+    apiVersion: network.example.org/v1alpha1
+    kind: Network
+  
+  resources:
+    - name: vpc
+      base:
+        apiVersion: ec2.aws.crossplane.io/v1beta1
+        kind: VPC
+        spec:
+          forProvider:
+            enableDnsHostnames: true
+            enableDnsSupport: true
+          providerConfigRef:
+            name: default
+      patches:
+        - type: FromCompositeFieldPath
+          fromFieldPath: spec.cidr
+          toFieldPath: spec.forProvider.cidrBlock
+        # Set DNS based on XR field
+        - type: FromCompositeFieldPath
+          fromFieldPath: spec.enableDns
+          toFieldPath: spec.forProvider.enableDnsSupport
+        - type: FromCompositeFieldPath
+          fromFieldPath: spec.enableDns
+          toFieldPath: spec.forProvider.enableDnsHostnames
+
+---
+# ============================================
+# Patch Type Reference
+# ============================================
+#
+# FromCompositeFieldPath: Copy from XR to resource
+# ToCompositeFieldPath: Copy from resource to XR
+# CombineFromComposite: Combine multiple XR fields
+# CombineToComposite: Combine multiple resource fields
+# FromEnvironmentFieldPath: Copy from environment variable
+# ToEnvironmentFieldPath: Copy to environment variable

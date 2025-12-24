@@ -1,2 +1,104 @@
-# Legacy v1 composition
-# Placeholder file - to be populated with actual content
+# Legacy Crossplane v1 Composition Example
+# This shows the v1 pattern with cluster-scoped XRs and Claims
+
+# ============================================
+# v1 XRD (Cluster-scoped only)
+# ============================================
+
+apiVersion: apiextensions.crossplane.io/v1
+kind: CompositeResourceDefinition
+metadata:
+  name: networks.network.example.org
+spec:
+  group: network.example.org
+  names:
+    kind: Network
+    plural: networks
+  # No claimNames = cluster-scoped only
+  versions:
+    - name: v1alpha1
+      served: true
+      referenceable: true
+      schema:
+        openAPIV3Schema:
+          type: object
+          properties:
+            spec:
+              type: object
+              required:
+                - cidr
+                - region
+              properties:
+                cidr:
+                  type: string
+                region:
+                  type: string
+
+---
+# ============================================
+# v1 Composition
+# ============================================
+
+apiVersion: apiextensions.crossplane.io/v1
+kind: Composition
+metadata:
+  name: network-aws-v1
+spec:
+  compositeTypeRef:
+    apiVersion: network.example.org/v1alpha1
+    kind: Network
+  resources:
+    - name: vpc
+      base:
+        apiVersion: ec2.aws.crossplane.io/v1beta1
+        kind: VPC
+        spec:
+          forProvider:
+            enableDnsHostnames: true
+            enableDnsSupport: true
+          providerConfigRef:
+            name: default
+      patches:
+        - type: FromCompositeFieldPath
+          fromFieldPath: spec.cidr
+          toFieldPath: spec.forProvider.cidrBlock
+        - type: FromCompositeFieldPath
+          fromFieldPath: spec.region
+          toFieldPath: spec.forProvider.region
+
+---
+# ============================================
+# v1 Usage Pattern
+# ============================================
+
+# Step 1: Create cluster-scoped XR (or it's created automatically from Claim)
+# apiVersion: network.example.org/v1alpha1
+# kind: Network
+# metadata:
+#   name: shared-network
+#   # No namespace - cluster-scoped
+# spec:
+#   cidr: 10.0.0.0/16
+#   region: us-east-1
+
+# Step 2: Create namespaced Claim (what users actually create)
+# apiVersion: network.example.org/v1alpha1
+# kind: NetworkClaim
+# metadata:
+#   name: prod-network
+#   namespace: production
+# spec:
+#   cidr: 10.0.0.0/16
+#   region: us-east-1
+#   # Claim references/binds to cluster XR
+
+---
+# ============================================
+# v1 Characteristics
+# ============================================
+#
+# - Cluster-scoped XRs
+# - Namespaced Claims abstraction
+# - Two-step process (XR + Claim)
+# - More complex architecture
+# - Claims bind to cluster XRs

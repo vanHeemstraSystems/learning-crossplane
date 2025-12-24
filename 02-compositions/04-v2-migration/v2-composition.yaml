@@ -1,2 +1,123 @@
-# Migrated v2 composition
-# Placeholder file - to be populated with actual content
+# Migrated Crossplane v2 Composition Example
+# This shows the v2 pattern with namespaced XRs (no Claims)
+
+# ============================================
+# v2 XRD (Supports Namespaced XRs)
+# ============================================
+
+apiVersion: apiextensions.crossplane.io/v1
+kind: CompositeResourceDefinition
+metadata:
+  name: networks.network.example.org
+spec:
+  group: network.example.org
+  names:
+    kind: Network
+    plural: networks
+  # claimNames enables namespaced XRs (v2 default)
+  claimNames:
+    kind: NetworkClaim
+    plural: networkclaims
+  versions:
+    - name: v1alpha1
+      served: true
+      referenceable: true
+      schema:
+        openAPIV3Schema:
+          type: object
+          properties:
+            spec:
+              type: object
+              required:
+                - cidr
+                - region
+              properties:
+                cidr:
+                  type: string
+                region:
+                  type: string
+
+---
+# ============================================
+# v2 Composition (Simplified)
+# ============================================
+
+apiVersion: apiextensions.crossplane.io/v1
+kind: Composition
+metadata:
+  name: network-aws-v2
+  labels:
+    version: "2.0"
+spec:
+  compositeTypeRef:
+    apiVersion: network.example.org/v1alpha1
+    kind: Network  # References XRD directly
+  resources:
+    - name: vpc
+      base:
+        apiVersion: ec2.aws.crossplane.io/v1beta1
+        kind: VPC
+        spec:
+          forProvider:
+            enableDnsHostnames: true
+            enableDnsSupport: true
+          providerConfigRef:
+            name: default
+      patches:
+        - type: FromCompositeFieldPath
+          fromFieldPath: spec.cidr
+          toFieldPath: spec.forProvider.cidrBlock
+        - type: FromCompositeFieldPath
+          fromFieldPath: spec.region
+          toFieldPath: spec.forProvider.region
+        # Write VPC ID back to XR
+        - type: ToCompositeFieldPath
+          fromFieldPath: status.atProvider.vpcId
+          toFieldPath: status.atProvider.vpcId
+
+---
+# ============================================
+# v2 Usage Pattern (Simplified)
+# ============================================
+
+# Single step: Create namespaced XR directly
+# apiVersion: network.example.org/v1alpha1
+# kind: Network
+# metadata:
+#   name: prod-network
+#   namespace: production  # Directly namespaced!
+# spec:
+#   cidr: 10.0.0.0/16
+#   region: us-east-1
+#   writeConnectionSecretsToRef:
+#     name: network-connection
+#     namespace: production
+
+---
+# ============================================
+# v2 Characteristics
+# ============================================
+#
+# - Namespaced XRs by default
+# - No Claims abstraction needed
+# - Single-step process (just create XR)
+# - Simpler architecture
+# - Direct namespace isolation
+# - Better for multi-tenancy
+
+---
+# ============================================
+# Migration Notes
+# ============================================
+#
+# Changes from v1:
+# 1. XRD includes claimNames (optional but recommended)
+# 2. Composition remains largely the same
+# 3. Users create XRs directly (no Claims)
+# 4. XRs are namespaced by default
+# 5. Simpler mental model
+#
+# Backward Compatibility:
+# - Cluster-scoped XRs still work
+# - Can run both patterns during migration
+# - Gradual migration supported

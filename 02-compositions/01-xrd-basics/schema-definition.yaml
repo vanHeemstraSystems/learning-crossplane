@@ -1,2 +1,300 @@
-# XRD schema definition example
-# Placeholder file - to be populated with actual content
+# Advanced Schema Definition Examples for XRDs
+# This file demonstrates various schema patterns and validation rules
+
+# ============================================
+# Example 1: Basic Schema with Required Fields
+# ============================================
+
+apiVersion: apiextensions.crossplane.io/v1
+kind: CompositeResourceDefinition
+metadata:
+  name: simpleapps.app.example.org
+spec:
+  group: app.example.org
+  names:
+    kind: SimpleApp
+    plural: simpleapps
+  versions:
+    - name: v1alpha1
+      served: true
+      referenceable: true
+      schema:
+        openAPIV3Schema:
+          type: object
+          properties:
+            spec:
+              type: object
+              required:
+                - name
+              properties:
+                name:
+                  type: string
+---
+# ============================================
+# Example 2: Schema with String Validation
+# ============================================
+
+apiVersion: apiextensions.crossplane.io/v1
+kind: CompositeResourceDefinition
+metadata:
+  name: networks.network.example.org
+spec:
+  group: network.example.org
+  names:
+    kind: Network
+    plural: networks
+  versions:
+    - name: v1alpha1
+      served: true
+      referenceable: true
+      schema:
+        openAPIV3Schema:
+          type: object
+          properties:
+            spec:
+              type: object
+              required:
+                - cidr
+              properties:
+                # CIDR with pattern validation
+                cidr:
+                  type: string
+                  pattern: '^([0-9]{1,3}\.){3}[0-9]{1,3}/[0-9]{1,2}$'
+                  description: "CIDR block (e.g., 10.0.0.0/16)"
+                
+                # Region with enum
+                region:
+                  type: string
+                  enum:
+                    - us-east-1
+                    - us-west-2
+                    - eu-west-1
+                  default: us-east-1
+                
+                # Name with length constraints
+                name:
+                  type: string
+                  minLength: 3
+                  maxLength: 63
+                  pattern: '^[a-z0-9]([-a-z0-9]*[a-z0-9])?$'
+---
+# ============================================
+# Example 3: Schema with Numeric Validation
+# ============================================
+
+apiVersion: apiextensions.crossplane.io/v1
+kind: CompositeResourceDefinition
+metadata:
+  name: databases.database.example.org
+spec:
+  group: database.example.org
+  names:
+    kind: Database
+    plural: databases
+  versions:
+    - name: v1alpha1
+      served: true
+      referenceable: true
+      schema:
+        openAPIV3Schema:
+          type: object
+          properties:
+            spec:
+              type: object
+              properties:
+                # Integer with min/max
+                storageSize:
+                  type: integer
+                  minimum: 20
+                  maximum: 65536
+                  default: 20
+                  description: "Storage size in GB"
+                
+                # Integer for port
+                port:
+                  type: integer
+                  minimum: 1024
+                  maximum: 65535
+                  default: 5432
+                
+                # Number for percentage
+                cpuUtilization:
+                  type: number
+                  minimum: 0
+                  maximum: 100
+                  default: 50
+---
+# ============================================
+# Example 4: Schema with Nested Objects
+# ============================================
+
+apiVersion: apiextensions.crossplane.io/v1
+kind: CompositeResourceDefinition
+metadata:
+  name: applications.app.example.org
+spec:
+  group: app.example.org
+  names:
+    kind: Application
+    plural: applications
+  versions:
+    - name: v1alpha1
+      served: true
+      referenceable: true
+      schema:
+        openAPIV3Schema:
+          type: object
+          properties:
+            spec:
+              type: object
+              properties:
+                # Nested object: database configuration
+                database:
+                  type: object
+                  required:
+                    - engine
+                  properties:
+                    engine:
+                      type: string
+                      enum: [postgres, mysql]
+                    version:
+                      type: string
+                    size:
+                      type: string
+                
+                # Nested object: compute configuration
+                compute:
+                  type: object
+                  properties:
+                    replicas:
+                      type: integer
+                      minimum: 1
+                      default: 2
+                    cpu:
+                      type: string
+                      default: "100m"
+                    memory:
+                      type: string
+                      default: "128Mi"
+                
+                # Nested object: network configuration
+                network:
+                  type: object
+                  properties:
+                    port:
+                      type: integer
+                      default: 8080
+                    protocol:
+                      type: string
+                      enum: [TCP, UDP]
+                      default: TCP
+---
+# ============================================
+# Example 5: Schema with Arrays
+# ============================================
+
+apiVersion: apiextensions.crossplane.io/v1
+kind: CompositeResourceDefinition
+metadata:
+  name: clusters.cluster.example.org
+spec:
+  group: cluster.example.org
+  names:
+    kind: Cluster
+    plural: clusters
+  versions:
+    - name: v1alpha1
+      served: true
+      referenceable: true
+      schema:
+        openAPIV3Schema:
+          type: object
+          properties:
+            spec:
+              type: object
+              properties:
+                # Array of strings
+                regions:
+                  type: array
+                  items:
+                    type: string
+                  minItems: 1
+                  uniqueItems: true
+                  description: "List of regions"
+                
+                # Array of objects
+                nodePools:
+                  type: array
+                  items:
+                    type: object
+                    required:
+                      - name
+                      - instanceType
+                    properties:
+                      name:
+                        type: string
+                      instanceType:
+                        type: string
+                      minNodes:
+                        type: integer
+                        minimum: 1
+                      maxNodes:
+                        type: integer
+                        minimum: 1
+---
+# ============================================
+# Example 6: Schema with Boolean and Defaults
+# ============================================
+
+apiVersion: apiextensions.crossplane.io/v1
+kind: CompositeResourceDefinition
+metadata:
+  name: networks.network.example.org
+spec:
+  group: network.example.org
+  names:
+    kind: Network
+    plural: networks
+  versions:
+    - name: v1alpha1
+      served: true
+      referenceable: true
+      schema:
+        openAPIV3Schema:
+          type: object
+          properties:
+            spec:
+              type: object
+              properties:
+                # Boolean with default
+                enableDns:
+                  type: boolean
+                  default: true
+                  description: "Enable DNS resolution"
+                
+                # Boolean for public access
+                publicAccess:
+                  type: boolean
+                  default: false
+                  description: "Allow public access"
+                
+                # Boolean for encryption
+                encryption:
+                  type: boolean
+                  default: true
+                  description: "Enable encryption at rest"
+---
+# ============================================
+# Schema Validation Tips
+# ============================================
+#
+# 1. Always define required fields
+# 2. Use enums for limited choices
+# 3. Add pattern validation for strings
+# 4. Set min/max for numbers
+# 5. Provide defaults when appropriate
+# 6. Add descriptions for clarity
+# 7. Use nested objects for complex structures
+# 8. Validate array items
+# 9. Use uniqueItems for arrays when needed
+# 10. Test schemas with invalid inputs

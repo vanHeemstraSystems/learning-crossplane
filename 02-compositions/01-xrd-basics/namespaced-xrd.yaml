@@ -1,2 +1,97 @@
-# Namespaced XRD (v2)
-# Placeholder file - to be populated with actual content
+# Namespaced Composite Resource Definition (XRD) Example
+# Crossplane v2 default - XRs are namespaced by default
+# This allows namespace-scoped infrastructure resources
+
+apiVersion: apiextensions.crossplane.io/v1
+kind: CompositeResourceDefinition
+metadata:
+  name: databases.database.example.org
+spec:
+  group: database.example.org
+  names:
+    kind: Database
+    plural: databases
+    singular: database
+  
+  # Claim names - enables namespaced XRs
+  # In v2, this is the default pattern
+  claimNames:
+    kind: DatabaseClaim
+    plural: databaseclaims
+  
+  versions:
+    - name: v1alpha1
+      served: true
+      referenceable: true
+      schema:
+        openAPIV3Schema:
+          type: object
+          properties:
+            spec:
+              type: object
+              required:
+                - engine
+                - instanceClass
+              properties:
+                # Database engine
+                engine:
+                  type: string
+                  description: "Database engine type"
+                  enum:
+                    - postgres
+                    - mysql
+                    - mariadb
+                
+                # Instance class/size
+                instanceClass:
+                  type: string
+                  description: "Database instance class (e.g., db.t3.micro)"
+                  default: db.t3.micro
+                
+                # Database name
+                dbName:
+                  type: string
+                  description: "Name of the database"
+                
+                # Storage size in GB
+                storageSize:
+                  type: integer
+                  description: "Storage size in GB"
+                  minimum: 20
+                  maximum: 65536
+                  default: 20
+                
+                # Environment
+                environment:
+                  type: string
+                  enum:
+                    - development
+                    - staging
+                    - production
+                  default: development
+                
+                # Write connection secret
+                writeConnectionSecretToRef:
+                  type: object
+                  properties:
+                    name:
+                      type: string
+                    namespace:
+                      type: string
+---
+# Example: Creating a namespaced DatabaseClaim
+# 
+# apiVersion: database.example.org/v1alpha1
+# kind: DatabaseClaim
+# metadata:
+#   name: my-database
+#   namespace: production  # Namespace-scoped!
+# spec:
+#   engine: postgres
+#   instanceClass: db.t3.micro
+#   dbName: myappdb
+#   storageSize: 100
+#   environment: production
+#   writeConnectionSecretToRef:
+#     name: db-connection
+#     namespace: production
