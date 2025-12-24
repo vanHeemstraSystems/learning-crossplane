@@ -1,2 +1,239 @@
-# Custom Resources examples
-# Placeholder file - to be populated with actual content
+# Custom Resources Examples
+# Custom resources are instances of CRDs (Custom Resource Definitions)
+
+# ============================================
+# Understanding Custom Resources
+# ============================================
+# Custom resources are Kubernetes resources created from CRDs
+# They follow the same patterns as native Kubernetes resources
+# They have spec (desired state) and status (actual state)
+
+# ============================================
+# Example 1: Simple S3 Bucket
+# ============================================
+
+apiVersion: s3.aws.crossplane.io/v1beta1
+kind: Bucket
+metadata:
+  name: example-bucket
+  namespace: default
+  labels:
+    environment: development
+    managed-by: crossplane
+spec:
+  # Provider configuration reference
+  providerConfigRef:
+    name: default
+  
+  # Resource-specific configuration
+  forProvider:
+    bucket: my-example-bucket-20241224
+    region: us-east-1
+  
+  # Deletion policy
+  deletionPolicy: Delete
+---
+# ============================================
+# Example 2: RDS Database Instance
+# ============================================
+
+apiVersion: rds.aws.crossplane.io/v1beta1
+kind: DBInstance
+metadata:
+  name: example-database
+  namespace: production
+  labels:
+    environment: production
+    database: postgresql
+spec:
+  providerConfigRef:
+    name: default
+  
+  forProvider:
+    engine: postgres
+    engineVersion: "15.4"
+    dbInstanceClass: db.t3.micro
+    dbName: myappdb
+    allocatedStorage: 20
+    publiclyAccessible: false
+  
+  deletionPolicy: Retain  # Protect production data
+  
+  # Write connection info to a secret
+  writeConnectionSecretToRef:
+    name: db-connection-secret
+    namespace: production
+---
+# ============================================
+# Example 3: VPC with References
+# ============================================
+
+apiVersion: ec2.aws.crossplane.io/v1beta1
+kind: VPC
+metadata:
+  name: example-vpc
+  namespace: default
+spec:
+  providerConfigRef:
+    name: default
+  
+  forProvider:
+    cidrBlock: 10.0.0.0/16
+    enableDnsHostnames: true
+    enableDnsSupport: true
+  
+  deletionPolicy: Delete
+---
+# ============================================
+# Example 4: Resource with Selector
+# ============================================
+
+apiVersion: ec2.aws.crossplane.io/v1beta1
+kind: Subnet
+metadata:
+  name: example-subnet
+spec:
+  providerConfigRef:
+    name: default
+  
+  forProvider:
+    # Reference VPC using selector
+    vpcIdSelector:
+      matchLabels:
+        environment: production
+    cidrBlock: 10.0.1.0/24
+    availabilityZone: us-east-1a
+    mapPublicIpOnLaunch: true
+  
+  deletionPolicy: Delete
+---
+# ============================================
+# Example 5: Resource with Secret Reference
+# ============================================
+
+apiVersion: rds.aws.crossplane.io/v1beta1
+kind: DBInstance
+metadata:
+  name: database-with-secret
+spec:
+  providerConfigRef:
+    name: default
+  
+  forProvider:
+    engine: mysql
+    engineVersion: "8.0"
+    dbInstanceClass: db.t3.micro
+    dbName: mydb
+    
+    # Reference password from secret
+    masterUserPasswordSecretRef:
+      namespace: default
+      name: db-password-secret
+      key: password
+    
+    masterUsername: admin
+    allocatedStorage: 20
+  
+  deletionPolicy: Retain
+---
+# ============================================
+# Example 6: Resource with External Name
+# ============================================
+
+apiVersion: s3.aws.crossplane.io/v1beta1
+kind: Bucket
+metadata:
+  name: bucket-with-external-name
+  annotations:
+    # Map Kubernetes name to cloud resource name
+    crossplane.io/external-name: my-cloud-bucket-name
+spec:
+  providerConfigRef:
+    name: default
+  
+  forProvider:
+    # External name annotation takes precedence
+    # bucket field can be omitted if using annotation
+    region: us-east-1
+  
+  deletionPolicy: Delete
+---
+# ============================================
+# Example 7: Resource with Multiple Conditions
+# ============================================
+# Note: Status is managed by Crossplane, not specified in spec
+# This example shows what status might look like
+
+apiVersion: s3.aws.crossplane.io/v1beta1
+kind: Bucket
+metadata:
+  name: bucket-example
+spec:
+  providerConfigRef:
+    name: default
+  forProvider:
+    bucket: my-bucket
+    region: us-east-1
+  deletionPolicy: Delete
+# Status (managed by Crossplane):
+# status:
+#   atProvider:
+#     arn: "arn:aws:s3:::my-bucket"
+#     region: "us-east-1"
+#   conditions:
+#     - type: Ready
+#       status: "True"
+#       reason: Available
+#     - type: Synced
+#       status: "True"
+#       reason: ReconcileSuccess
+---
+# ============================================
+# Common Patterns
+# ============================================
+
+# Pattern 1: Basic resource
+# - metadata: name, namespace, labels
+# - spec.providerConfigRef: which provider to use
+# - spec.forProvider: resource configuration
+# - spec.deletionPolicy: what happens on delete
+
+# Pattern 2: Resource with dependencies
+# - Use selectors to reference other resources
+# - Ensure dependencies are created first
+
+# Pattern 3: Resource with secrets
+# - Use secretRef for sensitive data
+# - Use writeConnectionSecretToRef to output connection info
+
+# Pattern 4: Resource with external name
+# - Use annotation for cloud resource name
+# - Useful for importing existing resources
+
+# ============================================
+# Working with Custom Resources
+# ============================================
+
+# Create a resource:
+# kubectl apply -f custom-resources.yaml
+
+# List resources:
+# kubectl get buckets
+# kubectl get dbinstances
+# kubectl get vpcs
+
+# Get resource details:
+# kubectl get bucket example-bucket -o yaml
+# kubectl describe bucket example-bucket
+
+# Update a resource:
+# kubectl edit bucket example-bucket
+# kubectl apply -f custom-resources.yaml
+
+# Delete a resource:
+# kubectl delete bucket example-bucket
+# kubectl delete -f custom-resources.yaml
+
+# Watch resources:
+# kubectl get buckets -w
+# kubectl get dbinstances -w

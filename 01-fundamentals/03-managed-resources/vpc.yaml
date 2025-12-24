@@ -1,2 +1,121 @@
-# VPC managed resource example
-# Placeholder file - to be populated with actual content
+# VPC (Virtual Private Cloud) Managed Resource Example
+# This creates a VPC network in AWS using Crossplane
+
+apiVersion: ec2.aws.crossplane.io/v1beta1
+kind: VPC
+metadata:
+  name: my-vpc
+  labels:
+    environment: development
+    managed-by: crossplane
+    network: production
+spec:
+  # Reference to the provider configuration
+  providerConfigRef:
+    name: default
+  
+  # VPC configuration
+  forProvider:
+    # CIDR block for the VPC
+    # This defines the IP address range for the VPC
+    cidrBlock: 10.0.0.0/16
+    
+    # Enable DNS hostnames
+    enableDnsHostnames: true
+    
+    # Enable DNS resolution
+    enableDnsSupport: true
+    
+    # Instance tenancy
+    # Options: default, dedicated, host
+    instanceTenancy: default
+    
+    # Tags
+    tags:
+      Name: my-crossplane-vpc
+      Environment: development
+      ManagedBy: crossplane
+  
+  # Deletion policy
+  deletionPolicy: Delete
+
+---
+# Example: Simple VPC (minimal configuration)
+apiVersion: ec2.aws.crossplane.io/v1beta1
+kind: VPC
+metadata:
+  name: simple-vpc
+spec:
+  providerConfigRef:
+    name: default
+  forProvider:
+    cidrBlock: 172.16.0.0/16
+    enableDnsHostnames: true
+    enableDnsSupport: true
+  deletionPolicy: Delete
+
+---
+# Example: Complete VPC setup with Subnet and Internet Gateway
+# This shows how to create a complete network setup
+
+# Subnet in the VPC
+apiVersion: ec2.aws.crossplane.io/v1beta1
+kind: Subnet
+metadata:
+  name: my-public-subnet
+spec:
+  providerConfigRef:
+    name: default
+  forProvider:
+    # Reference to the VPC (created above)
+    vpcIdSelector:
+      matchLabels:
+        crossplane.io/external-name: my-vpc
+    
+    # CIDR block for the subnet (must be within VPC CIDR)
+    cidrBlock: 10.0.1.0/24
+    
+    # Availability zone
+    availabilityZone: us-east-1a
+    
+    # Map public IP on launch (for public subnet)
+    mapPublicIpOnLaunch: true
+    
+    tags:
+      Name: my-public-subnet
+      Type: public
+---
+# Internet Gateway (for public internet access)
+apiVersion: ec2.aws.crossplane.io/v1beta1
+kind: InternetGateway
+metadata:
+  name: my-igw
+spec:
+  providerConfigRef:
+    name: default
+  forProvider:
+    vpcIdSelector:
+      matchLabels:
+        crossplane.io/external-name: my-vpc
+    tags:
+      Name: my-igw
+---
+# Route Table (to route traffic through Internet Gateway)
+apiVersion: ec2.aws.crossplane.io/v1beta1
+kind: RouteTable
+metadata:
+  name: my-public-route-table
+spec:
+  providerConfigRef:
+    name: default
+  forProvider:
+    vpcIdSelector:
+      matchLabels:
+        crossplane.io/external-name: my-vpc
+    routes:
+      - destinationCidrBlock: 0.0.0.0/0
+        gatewayIdSelector:
+          matchLabels:
+            crossplane.io/external-name: my-igw
+    tags:
+      Name: my-public-route-table

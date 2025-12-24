@@ -1,2 +1,123 @@
-# RDS Instance managed resource example
-# Placeholder file - to be populated with actual content
+# RDS Database Instance Managed Resource Example
+# This creates an RDS PostgreSQL database in AWS using Crossplane
+
+apiVersion: rds.aws.crossplane.io/v1beta1
+kind: DBInstance
+metadata:
+  name: my-postgres-database
+  labels:
+    environment: development
+    managed-by: crossplane
+    database: postgresql
+spec:
+  # Reference to the provider configuration
+  providerConfigRef:
+    name: default
+  
+  # RDS instance configuration
+  forProvider:
+    # Database engine
+    engine: postgres
+    engineVersion: "15.4"
+    
+    # Instance class (size)
+    dbInstanceClass: db.t3.micro  # Free tier eligible
+    
+    # Database name
+    dbName: myappdb
+    
+    # Master username and password
+    # In production, use secrets management (see below)
+    masterUsername: admin
+    masterUserPasswordSecretRef:
+      namespace: default
+      name: rds-password
+      key: password
+    
+    # Allocated storage (GB)
+    allocatedStorage: 20
+    
+    # Storage type
+    storageType: gp3
+    
+    # Backup configuration
+    backupRetentionPeriod: 7  # days
+    backupWindow: "03:00-04:00"  # UTC
+    copyTagsToSnapshot: true
+    
+    # Maintenance window
+    maintenanceWindow: "mon:04:00-mon:05:00"  # UTC
+    
+    # Multi-AZ deployment (for high availability)
+    multiAz: false  # Set to true for production
+    
+    # Public accessibility
+    publiclyAccessible: false  # Security best practice
+    
+    # VPC and subnet configuration
+    # Note: You'll need to create VPC, Subnet, and DBSubnetGroup first
+    # dbSubnetGroupNameRef:
+    #   name: my-db-subnet-group
+    
+    # Security groups
+    # vpcSecurityGroupIds:
+    #   - sg-xxxxxxxxx
+    
+    # Database port
+    port: 5432
+    
+    # Enable encryption at rest
+    storageEncrypted: true
+    
+    # Enable automated backups
+    skipFinalSnapshot: true  # Set to false for production
+    
+    # Tags
+    tags:
+      Environment: development
+      ManagedBy: crossplane
+      Application: myapp
+  
+  # Deletion policy
+  # Use Retain for production databases to prevent accidental data loss
+  deletionPolicy: Retain
+  
+  # Write connection secrets to a secret
+  writeConnectionSecretToRef:
+    name: rds-connection-secret
+    namespace: default
+
+---
+# Secret for RDS master password
+# Create this before applying the DBInstance
+apiVersion: v1
+kind: Secret
+metadata:
+  name: rds-password
+  namespace: default
+type: Opaque
+stringData:
+  password: "ChangeThisPassword123!"  # Use a strong password in production
+---
+# Example: Simple RDS instance (minimal configuration)
+apiVersion: rds.aws.crossplane.io/v1beta1
+kind: DBInstance
+metadata:
+  name: simple-database
+spec:
+  providerConfigRef:
+    name: default
+  forProvider:
+    engine: postgres
+    engineVersion: "15.4"
+    dbInstanceClass: db.t3.micro
+    dbName: simpledb
+    masterUsername: admin
+    masterUserPasswordSecretRef:
+      namespace: default
+      name: rds-password
+      key: password
+    allocatedStorage: 20
+    publiclyAccessible: false
+    skipFinalSnapshot: true
+  deletionPolicy: Retain

@@ -1,2 +1,75 @@
-# S3 Bucket managed resource example
-# Placeholder file - to be populated with actual content
+# S3 Bucket Managed Resource Example
+# This creates an S3 bucket in AWS using Crossplane
+
+apiVersion: s3.aws.crossplane.io/v1beta1
+kind: Bucket
+metadata:
+  name: my-crossplane-bucket
+  labels:
+    environment: development
+    managed-by: crossplane
+    example: true
+spec:
+  # Reference to the provider configuration
+  providerConfigRef:
+    name: default
+  
+  # S3 bucket configuration
+  forProvider:
+    # Bucket name (must be globally unique)
+    # Note: S3 bucket names must be globally unique across all AWS accounts
+    bucket: my-crossplane-bucket-20241224
+    
+    # Region where the bucket will be created
+    region: us-east-1
+    
+    # Server-side encryption configuration
+    serverSideEncryptionConfiguration:
+      - rule:
+          applyServerSideEncryptionByDefault:
+            sseAlgorithm: AES256
+    
+    # Versioning configuration
+    versioningConfiguration:
+      status: Enabled
+    
+    # Public access block settings (security best practice)
+    publicAccessBlockConfiguration:
+      blockPublicAcls: true
+      blockPublicPolicy: true
+      ignorePublicAcls: true
+      restrictPublicBuckets: true
+    
+    # Lifecycle configuration (optional)
+    lifecycleConfiguration:
+      rules:
+        - id: delete-old-versions
+          status: Enabled
+          noncurrentVersionExpiration:
+            noncurrentDays: 30
+        - id: transition-to-glacier
+          status: Enabled
+          transitions:
+            - days: 90
+              storageClass: GLACIER
+  
+  # Deletion policy
+  # Options: Delete, Retain, Orphan
+  # Delete: Remove bucket when this resource is deleted
+  # Retain: Keep bucket even if this resource is deleted
+  # Orphan: Remove this resource but keep the bucket
+  deletionPolicy: Delete
+
+---
+# Example: Simple bucket without advanced features
+apiVersion: s3.aws.crossplane.io/v1beta1
+kind: Bucket
+metadata:
+  name: simple-bucket
+spec:
+  providerConfigRef:
+    name: default
+  forProvider:
+    bucket: my-simple-bucket-20241224
+    region: us-east-1
+  deletionPolicy: Delete

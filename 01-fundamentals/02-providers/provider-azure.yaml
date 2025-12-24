@@ -1,2 +1,37 @@
-# Azure Provider configuration
-# Placeholder file - to be populated with actual content
+# Azure Provider Installation
+# This installs the Azure provider for Crossplane
+
+apiVersion: pkg.crossplane.io/v1
+kind: Provider
+metadata:
+  name: provider-azure-azure
+spec:
+  package: xpkg.upbound.io/upbound/provider-azure-azure:v1.0.0
+  packagePullPolicy: IfNotPresent
+---
+# Azure Provider Configuration
+# After installing the provider, configure it with Azure service principal credentials
+
+apiVersion: azure.crossplane.io/v1beta1
+kind: ProviderConfig
+metadata:
+  name: default
+spec:
+  credentials:
+    source: Secret
+    secretRef:
+      namespace: crossplane-system
+      name: azure-creds
+      key: credentials
+---
+# Example: How to create the Azure credentials secret
+#
+# Create a service principal in Azure:
+# az ad sp create-for-rbac --name crossplane-provider
+#
+# Create the secret with service principal details:
+# kubectl create secret generic azure-creds \
+#   -n crossplane-system \
+#   --from-literal=credentials="{\"clientId\":\"<client-id>\",\"clientSecret\":\"<client-secret>\",\"tenantId\":\"<tenant-id>\",\"subscriptionId\":\"<subscription-id>\"}"
+#
+# Or use Azure Workload Identity for better security (recommended for AKS)

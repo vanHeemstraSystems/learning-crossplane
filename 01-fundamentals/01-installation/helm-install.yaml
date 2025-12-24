@@ -1,2 +1,30 @@
-# Helm installation configuration for Crossplane
-# Placeholder file - to be populated with actual content
+# Crossplane Installation using Helm
+# This file demonstrates the Helm installation approach
+
+# Step 1: Add the Crossplane Helm repository
+# Run: helm repo add crossplane-stable https://charts.crossplane.io/stable
+# Run: helm repo update
+
+# Step 2: Install Crossplane
+# Run: helm install crossplane crossplane-stable/crossplane \
+#      --namespace crossplane-system \
+#      --create-namespace
+
+# Alternative: Install with this file as a Helm template reference
+# This shows the structure but actual installation requires Helm CLI
+
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: crossplane-system
+  labels:
+    name: crossplane-system
+---
+# Note: The actual Crossplane deployment is managed by Helm
+# This file serves as a reference for the installation process
+# 
+# To install, use:
+# helm install crossplane crossplane-stable/crossplane \
+#   --namespace crossplane-system \
+#   --create-namespace \
+#   --values helm-values.yaml

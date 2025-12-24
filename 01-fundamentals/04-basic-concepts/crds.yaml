@@ -1,2 +1,192 @@
-# Custom Resource Definitions examples
-# Placeholder file - to be populated with actual content
+# Custom Resource Definitions (CRDs) Examples
+# CRDs define the schema for managed resources in Crossplane
+
+# ============================================
+# Understanding CRDs
+# ============================================
+# CRDs extend Kubernetes API to support new resource types
+# Crossplane uses CRDs to define managed resources like Bucket, DBInstance, VPC, etc.
+
+# ============================================
+# Example: Viewing Existing CRDs
+# ============================================
+# List all Crossplane CRDs:
+# kubectl get crds | grep crossplane
+
+# View a specific CRD:
+# kubectl get crd buckets.s3.aws.crossplane.io -o yaml
+
+# ============================================
+# CRD Structure Overview
+# ============================================
+# A CRD typically contains:
+# - apiVersion: apiextensions.k8s.io/v1
+# - kind: CustomResourceDefinition
+# - metadata: Name, labels, annotations
+# - spec: Schema definition, versions, scope
+# - status: Accepted names, conditions
+
+# ============================================
+# Example: Bucket CRD (simplified)
+# ============================================
+# This is a conceptual example. Actual CRDs are installed by providers.
+
+apiVersion: apiextensions.k8s.io/v1
+kind: CustomResourceDefinition
+metadata:
+  name: buckets.s3.aws.crossplane.io
+  labels:
+    provider: aws
+    resource: s3
+spec:
+  group: s3.aws.crossplane.io
+  versions:
+    - name: v1beta1
+      served: true
+      storage: true
+      schema:
+        openAPIV3Schema:
+          type: object
+          properties:
+            spec:
+              type: object
+              properties:
+                forProvider:
+                  type: object
+                  properties:
+                    bucket:
+                      type: string
+                      description: "S3 bucket name"
+                    region:
+                      type: string
+                      description: "AWS region"
+            status:
+              type: object
+              properties:
+                atProvider:
+                  type: object
+                  properties:
+                    arn:
+                      type: string
+                    region:
+                      type: string
+                conditions:
+                  type: array
+                  items:
+                    type: object
+                    properties:
+                      type:
+                        type: string
+                      status:
+                        type: string
+                      reason:
+                        type: string
+  scope: Namespaced  # or Cluster
+  names:
+    plural: buckets
+    singular: bucket
+    kind: Bucket
+    shortNames:
+      - s3b
+---
+# ============================================
+# Example: DBInstance CRD (simplified)
+# ============================================
+
+apiVersion: apiextensions.k8s.io/v1
+kind: CustomResourceDefinition
+metadata:
+  name: dbinstances.rds.aws.crossplane.io
+spec:
+  group: rds.aws.crossplane.io
+  versions:
+    - name: v1beta1
+      served: true
+      storage: true
+      schema:
+        openAPIV3Schema:
+          type: object
+          properties:
+            spec:
+              type: object
+              required:
+                - forProvider
+              properties:
+                forProvider:
+                  type: object
+                  required:
+                    - engine
+                    - dbInstanceClass
+                  properties:
+                    engine:
+                      type: string
+                      enum: ["postgres", "mysql", "mariadb", "oracle", "sqlserver"]
+                    engineVersion:
+                      type: string
+                    dbInstanceClass:
+                      type: string
+                    dbName:
+                      type: string
+                    allocatedStorage:
+                      type: integer
+                      minimum: 20
+                      maximum: 65536
+            status:
+              type: object
+              properties:
+                atProvider:
+                  type: object
+                  properties:
+                    dbInstanceStatus:
+                      type: string
+                    endpoint:
+                      type: string
+                    port:
+                      type: integer
+  scope: Namespaced
+  names:
+    plural: dbinstances
+    singular: dbinstance
+    kind: DBInstance
+---
+# ============================================
+# Viewing CRD Details
+# ============================================
+# To see the full CRD definition:
+# kubectl get crd buckets.s3.aws.crossplane.io -o yaml
+
+# To see just the schema:
+# kubectl get crd buckets.s3.aws.crossplane.io -o jsonpath='{.spec.versions[0].schema.openAPIV3Schema}'
+
+# ============================================
+# CRD Validation
+# ============================================
+# CRDs can include validation rules:
+# - Required fields
+# - Field types
+# - Enums (allowed values)
+# - Minimum/maximum values
+# - Pattern matching (regex)
+
+# ============================================
+# CRD Versions
+# ============================================
+# CRDs can have multiple versions:
+# - served: Can be used via API
+# - storage: Version stored in etcd
+# - Only one version can be storage: true
+
+# ============================================
+# CRD Scope
+# ============================================
+# CRDs can be:
+# - Namespaced: Resources belong to a namespace
+# - Cluster: Resources are cluster-wide
+
+# ============================================
+# Notes
+# ============================================
+# - CRDs are automatically installed by providers
+# - You typically don't need to create CRDs manually
+# - CRDs define what fields are available in managed resources
+# - Understanding CRDs helps you understand resource schemas

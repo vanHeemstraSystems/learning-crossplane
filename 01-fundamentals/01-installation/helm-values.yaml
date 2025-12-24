@@ -1,2 +1,74 @@
 # Custom Helm values for Crossplane installation
-# Placeholder file - to be populated with actual content
+# Use this file to customize your Crossplane installation
+
+# Example: Production-ready configuration
+replicaCount: 2
+
+image:
+  repository: crossplane/crossplane
+  # Specify a specific version tag
+  # tag: "v1.15.0"
+  pullPolicy: IfNotPresent
+
+# Resource limits for production
+resources:
+  limits:
+    cpu: 1000m
+    memory: 1Gi
+  requests:
+    cpu: 100m
+    memory: 128Mi
+
+# Enable additional features
+args:
+  # Enable external secret stores (for AWS Secrets Manager, etc.)
+  - --enable-external-secret-stores
+  # Enable composition functions (Python, Go, KCL)
+  - --enable-composition-functions
+
+# Security context
+securityContext:
+  runAsNonRoot: true
+  runAsUser: 2000
+  fsGroup: 2000
+
+# Service account configuration
+serviceAccount:
+  create: true
+  annotations: {}
+  name: crossplane
+
+# Pod security context
+podSecurityContext:
+  fsGroup: 2000
+  runAsNonRoot: true
+  runAsUser: 2000
+
+# Node selector (optional)
+# nodeSelector:
+#   kubernetes.io/os: linux
+
+# Tolerations (optional)
+# tolerations: []
+
+# Affinity rules (optional)
+# affinity: {}
+
+# Additional environment variables
+env: []
+  # - name: CUSTOM_VAR
+  #   value: "custom-value"
+
+# Volume mounts (optional)
+# volumes: []
+# volumeMounts: []
+
+# Example: Development configuration (lighter resources)
+# replicaCount: 1
+# resources:
+#   limits:
+#     cpu: 500m
+#     memory: 512Mi
+#   requests:
+#     cpu: 100m
+#     memory: 128Mi

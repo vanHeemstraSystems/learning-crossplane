@@ -1,2 +1,45 @@
-# GCP Provider configuration
-# Placeholder file - to be populated with actual content
+# GCP Provider Installation
+# This installs the GCP provider for Crossplane
+
+apiVersion: pkg.crossplane.io/v1
+kind: Provider
+metadata:
+  name: provider-gcp-gcp
+spec:
+  package: xpkg.upbound.io/upbound/provider-gcp-gcp:v1.0.0
+  packagePullPolicy: IfNotPresent
+---
+# GCP Provider Configuration
+# After installing the provider, configure it with GCP service account credentials
+
+apiVersion: gcp.crossplane.io/v1beta1
+kind: ProviderConfig
+metadata:
+  name: default
+spec:
+  projectID: my-gcp-project-id  # Replace with your GCP project ID
+  credentials:
+    source: Secret
+    secretRef:
+      namespace: crossplane-system
+      name: gcp-creds
+      key: credentials
+---
+# Example: How to create the GCP credentials secret
+#
+# Create a service account in GCP:
+# gcloud iam service-accounts create crossplane-provider
+# gcloud iam service-accounts keys create key.json \
+#   --iam-account=crossplane-provider@PROJECT_ID.iam.gserviceaccount.com
+#
+# Grant necessary permissions:
+# gcloud projects add-iam-policy-binding PROJECT_ID \
+#   --member="serviceAccount:crossplane-provider@PROJECT_ID.iam.gserviceaccount.com" \
+#   --role="roles/editor"
+#
+# Create the secret:
+# kubectl create secret generic gcp-creds \
+#   -n crossplane-system \
+#   --from-file=credentials=key.json
+#
+# Or use Workload Identity for better security (recommended for GKE)

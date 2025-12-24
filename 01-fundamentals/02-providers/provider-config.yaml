@@ -1,2 +1,111 @@
-# Provider configuration examples
-# Placeholder file - to be populated with actual content
+# Example Provider Configuration
+# This file demonstrates different ways to configure provider credentials
+
+# ============================================
+# AWS Provider Configuration Examples
+# ============================================
+
+---
+# Example 1: Using Secret with credentials file
+apiVersion: aws.crossplane.io/v1beta1
+kind: ProviderConfig
+metadata:
+  name: aws-default
+spec:
+  credentials:
+    source: Secret
+    secretRef:
+      namespace: crossplane-system
+      name: aws-creds
+      key: credentials
+---
+# Example 2: Using Environment Variables
+apiVersion: aws.crossplane.io/v1beta1
+kind: ProviderConfig
+metadata:
+  name: aws-env
+spec:
+  credentials:
+    source: Environment
+    env:
+      - name: AWS_ACCESS_KEY_ID
+        valueFrom:
+          secretKeyRef:
+            name: aws-creds
+            key: access-key-id
+      - name: AWS_SECRET_ACCESS_KEY
+        valueFrom:
+          secretKeyRef:
+            name: aws-creds
+            key: secret-access-key
+      - name: AWS_SESSION_TOKEN
+        valueFrom:
+          secretKeyRef:
+            name: aws-creds
+            key: session-token
+            optional: true
+---
+# Example 3: Using IAM Role (for EKS with IRSA)
+apiVersion: aws.crossplane.io/v1beta1
+kind: ProviderConfig
+metadata:
+  name: aws-iam-role
+spec:
+  credentials:
+    source: InjectedIdentity
+    assumeRoleARN: arn:aws:iam::123456789012:role/CrossplaneProviderRole
+    assumeRoleExternalID: optional-external-id
+    assumeRoleSessionTags:
+      - key: Environment
+        value: Production
+
+# ============================================
+# Azure Provider Configuration Examples
+# ============================================
+
+---
+# Example: Azure with Service Principal
+apiVersion: azure.crossplane.io/v1beta1
+kind: ProviderConfig
+metadata:
+  name: azure-default
+spec:
+  credentials:
+    source: Secret
+    secretRef:
+      namespace: crossplane-system
+      name: azure-creds
+      key: credentials
+
+# ============================================
+# GCP Provider Configuration Examples
+# ============================================
+
+---
+# Example: GCP with Service Account Key
+apiVersion: gcp.crossplane.io/v1beta1
+kind: ProviderConfig
+metadata:
+  name: gcp-default
+spec:
+  projectID: my-gcp-project-id
+  credentials:
+    source: Secret
+    secretRef:
+      namespace: crossplane-system
+      name: gcp-creds
+      key: credentials
+
+# ============================================
+# Kubernetes Provider Configuration
+# ============================================
+
+---
+# Example: Kubernetes with Injected Identity (default)
+apiVersion: kubernetes.crossplane.io/v1alpha1
+kind: ProviderConfig
+metadata:
+  name: kubernetes-default
+spec:
+  credentials:
+    source: InjectedIdentity

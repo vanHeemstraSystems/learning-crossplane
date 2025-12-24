@@ -1,2 +1,43 @@
-# AWS Provider configuration
-# Placeholder file - to be populated with actual content
+# AWS Provider Installation
+# This installs the AWS provider for Crossplane
+
+apiVersion: pkg.crossplane.io/v1
+kind: Provider
+metadata:
+  name: provider-aws-aws
+spec:
+  package: xpkg.upbound.io/upbound/provider-aws-aws:v1.0.0
+  packagePullPolicy: IfNotPresent
+---
+# AWS Provider Configuration
+# After installing the provider, configure it with AWS credentials
+
+apiVersion: aws.crossplane.io/v1beta1
+kind: ProviderConfig
+metadata:
+  name: default
+spec:
+  credentials:
+    source: Secret
+    secretRef:
+      namespace: crossplane-system
+      name: aws-creds
+      key: credentials
+---
+# Example: How to create the AWS credentials secret
+# 
+# Option 1: From AWS credentials file
+# kubectl create secret generic aws-creds \
+#   -n crossplane-system \
+#   --from-file=credentials=$HOME/.aws/credentials
+#
+# Option 2: From environment variables
+# kubectl create secret generic aws-creds \
+#   -n crossplane-system \
+#   --from-literal=credentials="[default]
+# aws_access_key_id = YOUR_ACCESS_KEY
+# aws_secret_access_key = YOUR_SECRET_KEY
+# region = us-east-1"
+#
+# Option 3: Using AWS IAM roles (for EKS)
+# Use IRSA (IAM Roles for Service Accounts) for better security
