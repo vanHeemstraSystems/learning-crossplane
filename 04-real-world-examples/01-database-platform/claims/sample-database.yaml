@@ -1,2 +1,80 @@
-# Sample database claim
-# Placeholder file - to be populated with actual content
+# Sample Database Claims
+# Examples showing how developers use the database platform
+
+# ============================================
+# Example 1: PostgreSQL Database for Production
+# ============================================
+
+apiVersion: database.example.org/v1alpha1
+kind: DatabaseClaim
+metadata:
+  name: production-postgres
+  namespace: production
+  labels:
+    environment: production
+    team: backend
+spec:
+  engine: postgres
+  engineVersion: "15.4"
+  instanceClass: db.t3.medium
+  dbName: myappdb
+  storageSize: 100
+  environment: production
+  enableBackups: true
+  backupRetentionDays: 7
+  encryptionEnabled: true
+  writeConnectionSecretsToRef:
+    name: postgres-connection
+    namespace: production
+
+---
+# ============================================
+# Example 2: MySQL Database for Development
+# ============================================
+
+apiVersion: database.example.org/v1alpha1
+kind: DatabaseClaim
+metadata:
+  name: dev-mysql
+  namespace: development
+  labels:
+    environment: development
+    team: frontend
+spec:
+  engine: mysql
+  engineVersion: "8.0"
+  instanceClass: db.t3.micro
+  dbName: devdb
+  storageSize: 20
+  environment: development
+  enableBackups: false
+  encryptionEnabled: true
+  writeConnectionSecretsToRef:
+    name: mysql-connection
+    namespace: development
+
+---
+# ============================================
+# Example 3: MongoDB for Staging
+# ============================================
+
+apiVersion: database.example.org/v1alpha1
+kind: DatabaseClaim
+metadata:
+  name: staging-mongodb
+  namespace: staging
+  labels:
+    environment: staging
+    team: data
+spec:
+  engine: mongodb
+  instanceClass: db.r5.large
+  dbName: stagingdb
+  storageSize: 50
+  environment: staging
+  enableBackups: true
+  backupRetentionDays: 3
+  encryptionEnabled: true
+  writeConnectionSecretsToRef:
+    name: mongodb-connection
+    namespace: staging

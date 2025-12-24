@@ -1,2 +1,55 @@
-# Security group composition
-# Placeholder file - to be populated with actual content
+# Security Group Composition
+# Creates security groups with rules
+
+apiVersion: apiextensions.crossplane.io/v1
+kind: Composition
+metadata:
+  name: network-security-group-aws
+  labels:
+    resource: security-group
+    provider: aws
+spec:
+  compositeTypeRef:
+    apiVersion: network.example.org/v1alpha1
+    kind: Network
+  
+  resources:
+    # Security Group
+    - name: security-group
+      base:
+        apiVersion: ec2.aws.crossplane.io/v1beta1
+        kind: SecurityGroup
+        spec:
+          forProvider:
+            description: "Security group for network"
+          providerConfigRef:
+            name: default
+          deletionPolicy: Delete
+      
+      patches:
+        - type: FromCompositeFieldPath
+          fromFieldPath: status.atProvider.vpcId
+          toFieldPath: spec.forProvider.vpcId
+        
+        - type: FromCompositeFieldPath
+          fromFieldPath: spec.region
+          toFieldPath: spec.forProvider.region
+        
+        # Add description
+        - type: CombineFromComposite
+          combine:
+            strategy: string
+            string:
+              fmt: "Security group for %s"
+          toFieldPath: spec.forProvider.description
+          fromFieldPath:
+            - metadata.name
+        
+        # Add tags
+        - type: FromCompositeFieldPath
+          fromFieldPath: spec.environment
+          toFieldPath: spec.forProvider.tags[Environment]
+    
+    # Security Group Rules (simplified - full implementation needs function for arrays)
+    # Note: Security group rules are typically created as separate resources
+    # or managed through the security group's ingress/egress fields

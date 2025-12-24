@@ -1,2 +1,117 @@
-# PostgreSQL composition
-# Placeholder file - to be populated with actual content
+# PostgreSQL Database Composition
+# Creates AWS RDS PostgreSQL instances
+
+apiVersion: apiextensions.crossplane.io/v1
+kind: Composition
+metadata:
+  name: database-postgres-aws
+  labels:
+    engine: postgres
+    provider: aws
+spec:
+  compositeTypeRef:
+    apiVersion: database.example.org/v1alpha1
+    kind: Database
+  
+  writeConnectionSecretsToRef:
+    name: database-connection
+  
+  resources:
+    - name: rds-postgres
+      base:
+        apiVersion: rds.aws.crossplane.io/v1beta1
+        kind: DBInstance
+        spec:
+          forProvider:
+            engine: postgres
+            engineVersion: "15.4"
+            allocatedStorage: 20
+            storageType: gp3
+            storageEncrypted: true
+            publiclyAccessible: false
+            backupRetentionPeriod: 7
+            skipFinalSnapshot: false
+            copyTagsToSnapshot: true
+          providerConfigRef:
+            name: default
+          deletionPolicy: Retain
+          writeConnectionSecretToRef:
+            name: rds-connection
+            namespace: default
+      
+      patches:
+        # Map engine version
+        - type: FromCompositeFieldPath
+          fromFieldPath: spec.engineVersion
+          toFieldPath: spec.forProvider.engineVersion
+          policy:
+            fromFieldPath: Optional
+        
+        # Map instance class
+        - type: FromCompositeFieldPath
+          fromFieldPath: spec.instanceClass
+          toFieldPath: spec.forProvider.dbInstanceClass
+        
+        # Map database name
+        - type: FromCompositeFieldPath
+          fromFieldPath: spec.dbName
+          toFieldPath: spec.forProvider.dbName
+          policy:
+            fromFieldPath: Optional
+        
+        # Map storage size
+        - type: FromCompositeFieldPath
+          fromFieldPath: spec.storageSize
+          toFieldPath: spec.forProvider.allocatedStorage
+        
+        # Map encryption
+        - type: FromCompositeFieldPath
+          fromFieldPath: spec.encryptionEnabled
+          toFieldPath: spec.forProvider.storageEncrypted
+        
+        # Map backup retention
+        - type: FromCompositeFieldPath
+          fromFieldPath: spec.backupRetentionDays
+          toFieldPath: spec.forProvider.backupRetentionPeriod
+        
+        # Environment-based multi-AZ
+        - type: FromCompositeFieldPath
+          fromFieldPath: spec.environment
+          toFieldPath: spec.forProvider.multiAz
+          transforms:
+            - type: map
+              map:
+                development: false
+                staging: false
+                production: true
+        
+        # Environment-based instance class (if not specified)
+        - type: CombineFromComposite
+          combine:
+            strategy: string
+            string:
+              fmt: "db.t3.%s"
+          toFieldPath: spec.forProvider.dbInstanceClass
+          fromFieldPath:
+            - spec.environment
+          transforms:
+            - type: map
+              map:
+                development: micro
+                staging: small
+                production: medium
+          policy:
+            fromFieldPath: Optional
+        
+        # Write connection info back to XR
+        - type: ToCompositeFieldPath
+          fromFieldPath: status.atProvider.endpoint
+          toFieldPath: status.atProvider.endpoint
+        
+        - type: ToCompositeFieldPath
+          fromFieldPath: status.atProvider.port
+          toFieldPath: status.atProvider.port
+        
+        - type: ToCompositeFieldPath
+          fromFieldPath: status.atProvider.dbInstanceStatus
+          toFieldPath: status.atProvider.status

@@ -1,2 +1,218 @@
-# Application composition
-# Placeholder file - to be populated with actual content
+# Application Platform Composition
+# Creates Kubernetes resources for application deployment
+
+apiVersion: apiextensions.crossplane.io/v1
+kind: Composition
+metadata:
+  name: app-platform
+  labels:
+    platform: application
+spec:
+  compositeTypeRef:
+    apiVersion: app.example.org/v1alpha1
+    kind: Application
+  
+  resources:
+    # Resource 1: Kubernetes Deployment
+    - name: deployment
+      base:
+        apiVersion: apps/v1
+        kind: Deployment
+        spec:
+          replicas: 1
+          selector:
+            matchLabels:
+              app: placeholder
+          template:
+            metadata:
+              labels:
+                app: placeholder
+            spec:
+              containers:
+                - name: app
+                  image: placeholder
+                  resources:
+                    requests:
+                      cpu: "100m"
+                      memory: "128Mi"
+                    limits:
+                      cpu: "500m"
+                      memory: "512Mi"
+      
+      patches:
+        # Set deployment name
+        - type: CombineFromComposite
+          combine:
+            strategy: string
+            string:
+              fmt: "%s-deployment"
+          toFieldPath: metadata.name
+          fromFieldPath:
+            - metadata.name
+        
+        # Set replicas
+        - type: FromCompositeFieldPath
+          fromFieldPath: spec.replicas
+          toFieldPath: spec.replicas
+        
+        # Set labels
+        - type: CombineFromComposite
+          combine:
+            strategy: string
+            string:
+              fmt: "%s"
+          toFieldPath: spec.selector.matchLabels[app]
+          fromFieldPath:
+            - metadata.name
+        
+        - type: CombineFromComposite
+          combine:
+            strategy: string
+            string:
+              fmt: "%s"
+          toFieldPath: spec.template.metadata.labels[app]
+          fromFieldPath:
+            - metadata.name
+        
+        # Set container image
+        - type: CombineFromComposite
+          combine:
+            strategy: string
+            string:
+              fmt: "%s:%s"
+          toFieldPath: spec.template.spec.containers[0].image
+          fromFieldPath:
+            - spec.image
+            - spec.tag
+        
+        # Set CPU request
+        - type: FromCompositeFieldPath
+          fromFieldPath: spec.cpu
+          toFieldPath: spec.template.spec.containers[0].resources.requests[cpu]
+        
+        # Set CPU limit
+        - type: FromCompositeFieldPath
+          fromFieldPath: spec.cpuLimit
+          toFieldPath: spec.template.spec.containers[0].resources.limits[cpu]
+          policy:
+            fromFieldPath: Optional
+        
+        # Set memory request
+        - type: FromCompositeFieldPath
+          fromFieldPath: spec.memory
+          toFieldPath: spec.template.spec.containers[0].resources.requests[memory]
+        
+        # Set memory limit
+        - type: FromCompositeFieldPath
+          fromFieldPath: spec.memoryLimit
+          toFieldPath: spec.template.spec.containers[0].resources.limits[memory]
+          policy:
+            fromFieldPath: Optional
+        
+        # Set ports
+        - type: FromCompositeFieldPath
+          fromFieldPath: spec.ports
+          toFieldPath: spec.template.spec.containers[0].ports
+        
+        # Set environment variables
+        - type: FromCompositeFieldPath
+          fromFieldPath: spec.env
+          toFieldPath: spec.template.spec.containers[0].env
+          policy:
+            fromFieldPath: Optional
+    
+    # Resource 2: Kubernetes Service
+    - name: service
+      base:
+        apiVersion: v1
+        kind: Service
+        spec:
+          type: ClusterIP
+          selector:
+            app: placeholder
+          ports:
+            - port: 80
+              targetPort: 8080
+              protocol: TCP
+      
+      patches:
+        # Set service name
+        - type: CombineFromComposite
+          combine:
+            strategy: string
+            string:
+              fmt: "%s-service"
+          toFieldPath: metadata.name
+          fromFieldPath:
+            - metadata.name
+        
+        # Set selector
+        - type: CombineFromComposite
+          combine:
+            strategy: string
+            string:
+              fmt: "%s"
+          toFieldPath: spec.selector[app]
+          fromFieldPath:
+            - metadata.name
+        
+        # Set ports from XR
+        - type: FromCompositeFieldPath
+          fromFieldPath: spec.ports
+          toFieldPath: spec.ports
+          transforms:
+            - type: map
+              map:
+                # Transform port array to service ports
+                # This is simplified - full implementation may need function
+    
+    # Resource 3: Ingress (conditional)
+    - name: ingress
+      base:
+        apiVersion: networking.k8s.io/v1
+        kind: Ingress
+        spec:
+          rules:
+            - host: placeholder
+              http:
+                paths:
+                  - path: /
+                    pathType: Prefix
+                    backend:
+                      service:
+                        name: placeholder-service
+                        port:
+                          number: 80
+      
+      patches:
+        # Set ingress name
+        - type: CombineFromComposite
+          combine:
+            strategy: string
+            string:
+              fmt: "%s-ingress"
+          toFieldPath: metadata.name
+          fromFieldPath:
+            - metadata.name
+        
+        # Conditional creation based on ingress.enabled
+        - type: FromCompositeFieldPath
+          fromFieldPath: spec.ingress.enabled
+          toFieldPath: metadata.annotations[crossplane.io/optional]
+        
+        # Set host
+        - type: FromCompositeFieldPath
+          fromFieldPath: spec.ingress.host
+          toFieldPath: spec.rules[0].host
+          policy:
+            fromFieldPath: Optional
+        
+        # Set service name
+        - type: CombineFromComposite
+          combine:
+            strategy: string
+            string:
+              fmt: "%s-service"
+          toFieldPath: spec.rules[0].http.paths[0].backend.service.name
+          fromFieldPath:
+            - metadata.name

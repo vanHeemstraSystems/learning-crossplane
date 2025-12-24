@@ -1,2 +1,37 @@
-# Azure-specific composition
-# Placeholder file - to be populated with actual content
+# Azure Storage Composition
+# Creates Azure Storage Accounts
+
+apiVersion: apiextensions.crossplane.io/v1
+kind: Composition
+metadata:
+  name: bucket-azure
+  labels:
+    provider: azure
+    resource: bucket
+spec:
+  compositeTypeRef:
+    apiVersion: storage.example.org/v1alpha1
+    kind: Bucket
+  
+  resources:
+    - name: storage-account
+      base:
+        apiVersion: storage.azure.crossplane.io/v1alpha1
+        kind: Account
+        spec:
+          forProvider:
+            accountTier: Standard
+            accountReplicationType: LRS
+            location: eastus
+          providerConfigRef:
+            name: default
+          deletionPolicy: Delete
+      
+      patches:
+        - type: FromCompositeFieldPath
+          fromFieldPath: spec.name
+          toFieldPath: spec.forProvider.accountName
+        
+        - type: FromCompositeFieldPath
+          fromFieldPath: spec.region
+          toFieldPath: spec.forProvider.location

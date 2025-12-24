@@ -1,2 +1,155 @@
-# Application XRD
-# Placeholder file - to be populated with actual content
+# Application Composite Resource Definition (XRD)
+# Defines the custom API for application deployment
+
+apiVersion: apiextensions.crossplane.io/v1
+kind: CompositeResourceDefinition
+metadata:
+  name: applications.app.example.org
+spec:
+  group: app.example.org
+  names:
+    kind: Application
+    plural: applications
+    singular: application
+  
+  # Enable namespaced XRs (v2 default)
+  claimNames:
+    kind: ApplicationClaim
+    plural: applicationclaims
+  
+  versions:
+    - name: v1alpha1
+      served: true
+      referenceable: true
+      schema:
+        openAPIV3Schema:
+          type: object
+          properties:
+            spec:
+              type: object
+              required:
+                - image
+              properties:
+                # Container image
+                image:
+                  type: string
+                  description: "Container image to deploy"
+                  pattern: '^[a-z0-9]([-a-z0-9./]*[a-z0-9])?(:[a-z0-9]([-a-z0-9]*[a-z0-9])?)?$'
+                
+                # Image tag
+                tag:
+                  type: string
+                  description: "Image tag (defaults to 'latest')"
+                  default: latest
+                
+                # Number of replicas
+                replicas:
+                  type: integer
+                  description: "Number of application replicas"
+                  minimum: 1
+                  maximum: 100
+                  default: 1
+                
+                # CPU request/limit
+                cpu:
+                  type: string
+                  description: "CPU request (e.g., '100m', '1')"
+                  default: "100m"
+                
+                cpuLimit:
+                  type: string
+                  description: "CPU limit"
+                  default: "500m"
+                
+                # Memory request/limit
+                memory:
+                  type: string
+                  description: "Memory request (e.g., '128Mi', '1Gi')"
+                  default: "128Mi"
+                
+                memoryLimit:
+                  type: string
+                  description: "Memory limit"
+                  default: "512Mi"
+                
+                # Environment
+                environment:
+                  type: string
+                  description: "Environment (development, staging, production)"
+                  enum:
+                    - development
+                    - staging
+                    - production
+                  default: development
+                
+                # Ports
+                ports:
+                  type: array
+                  description: "Application ports"
+                  items:
+                    type: object
+                    properties:
+                      port:
+                        type: integer
+                        minimum: 1
+                        maximum: 65535
+                      protocol:
+                        type: string
+                        enum: [TCP, UDP]
+                        default: TCP
+                      name:
+                        type: string
+                
+                # Environment variables
+                env:
+                  type: array
+                  description: "Environment variables"
+                  items:
+                    type: object
+                    properties:
+                      name:
+                        type: string
+                      value:
+                        type: string
+                      valueFrom:
+                        type: object
+                
+                # Ingress configuration
+                ingress:
+                  type: object
+                  properties:
+                    enabled:
+                      type: boolean
+                      default: false
+                    host:
+                      type: string
+                    path:
+                      type: string
+                      default: "/"
+                    tls:
+                      type: boolean
+                      default: false
+                
+                # Storage
+                storage:
+                  type: object
+                  properties:
+                    enabled:
+                      type: boolean
+                      default: false
+                    size:
+                      type: string
+                      default: "10Gi"
+                    storageClass:
+                      type: string
+                
+                # Health checks
+                healthCheck:
+                  type: object
+                  properties:
+                    path:
+                      type: string
+                      default: "/health"
+                    port:
+                      type: integer
+                      default: 8080

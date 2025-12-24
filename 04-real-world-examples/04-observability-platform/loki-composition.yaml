@@ -1,2 +1,61 @@
-# Loki composition
-# Placeholder file - to be populated with actual content
+# Loki Composition
+# Creates Loki deployment for log aggregation
+
+apiVersion: apiextensions.crossplane.io/v1
+kind: Composition
+metadata:
+  name: monitoring-loki
+  labels:
+    component: loki
+spec:
+  compositeTypeRef:
+    apiVersion: monitoring.example.org/v1alpha1
+    kind: Monitoring
+  
+  resources:
+    - name: loki
+      base:
+        apiVersion: apps/v1
+        kind: Deployment
+        spec:
+          replicas: 1
+          selector:
+            matchLabels:
+              app: loki
+          template:
+            metadata:
+              labels:
+                app: loki
+            spec:
+              containers:
+                - name: loki
+                  image: grafana/loki:latest
+                  ports:
+                    - containerPort: 3100
+                  resources:
+                    requests:
+                      cpu: "200m"
+                      memory: "512Mi"
+                    limits:
+                      cpu: "1000m"
+                      memory: "2Gi"
+                  volumeMounts:
+                    - name: storage
+                      mountPath: /loki
+              volumes:
+                - name: storage
+                  persistentVolumeClaim:
+                    claimName: loki-storage
+      
+      patches:
+        - type: FromCompositeFieldPath
+          fromFieldPath: spec.loki.enabled
+          toFieldPath: metadata.annotations[crossplane.io/optional]
+        
+        - type: FromCompositeFieldPath
+          fromFieldPath: spec.loki.retention
+          toFieldPath: spec.template.spec.containers[0].args[0]
+          transforms:
+            - type: string
+              string:
+                fmt: "--config.expand-env=true"

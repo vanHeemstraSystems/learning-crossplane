@@ -1,2 +1,52 @@
-# Backend app example
-# Placeholder file - to be populated with actual content
+# Backend API Application Example
+# Demonstrates deploying a backend API with database connection
+
+apiVersion: app.example.org/v1alpha1
+kind: ApplicationClaim
+metadata:
+  name: backend-api
+  namespace: production
+  labels:
+    environment: production
+    team: backend
+    app: backend-api
+spec:
+  image: myregistry/backend-api
+  tag: v1.2.0
+  replicas: 3
+  cpu: "500m"
+  cpuLimit: "1000m"
+  memory: "512Mi"
+  memoryLimit: "1Gi"
+  environment: production
+  ports:
+    - port: 8080
+      protocol: TCP
+      name: http
+  env:
+    - name: DATABASE_URL
+      valueFrom:
+        secretKeyRef:
+          name: postgres-connection
+          key: url
+    - name: API_KEY
+      valueFrom:
+        secretKeyRef:
+          name: api-secrets
+          key: api-key
+    - name: ENVIRONMENT
+      value: production
+    - name: LOG_LEVEL
+      value: info
+  ingress:
+    enabled: true
+    host: api.example.com
+    path: /
+    tls: true
+  storage:
+    enabled: true
+    size: "20Gi"
+    storageClass: fast-ssd
+  healthCheck:
+    path: /health
+    port: 8080

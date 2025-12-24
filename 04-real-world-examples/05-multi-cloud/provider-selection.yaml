@@ -1,2 +1,61 @@
-# Provider selection logic
-# Placeholder file - to be populated with actual content
+# Multi-Cloud Provider Selection Example
+# This demonstrates how to select different cloud providers
+
+# ============================================
+# XRD for Multi-Cloud Storage
+# ============================================
+
+apiVersion: apiextensions.crossplane.io/v1
+kind: CompositeResourceDefinition
+metadata:
+  name: buckets.storage.example.org
+spec:
+  group: storage.example.org
+  names:
+    kind: Bucket
+    plural: buckets
+  claimNames:
+    kind: BucketClaim
+    plural: bucketclaims
+  versions:
+    - name: v1alpha1
+      served: true
+      referenceable: true
+      schema:
+        openAPIV3Schema:
+          type: object
+          properties:
+            spec:
+              type: object
+              required:
+                - name
+              properties:
+                name:
+                  type: string
+                  description: "Bucket name"
+                region:
+                  type: string
+                  description: "Region/location (cloud-agnostic)"
+                provider:
+                  type: string
+                  description: "Cloud provider (aws, azure, gcp)"
+                  enum:
+                    - aws
+                    - azure
+                    - gcp
+
+---
+# ============================================
+# Usage: Select Provider via Label
+# ============================================
+# 
+# apiVersion: storage.example.org/v1alpha1
+# kind: BucketClaim
+# metadata:
+#   name: my-bucket
+#   labels:
+#     provider: aws  # Selects AWS composition
+# spec:
+#   name: my-bucket
+#   region: us-east-1
+#   provider: aws

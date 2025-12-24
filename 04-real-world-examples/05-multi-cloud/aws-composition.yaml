@@ -1,2 +1,39 @@
-# AWS-specific composition
-# Placeholder file - to be populated with actual content
+# AWS Storage Composition
+# Creates S3 buckets on AWS
+
+apiVersion: apiextensions.crossplane.io/v1
+kind: Composition
+metadata:
+  name: bucket-aws
+  labels:
+    provider: aws
+    resource: bucket
+spec:
+  compositeTypeRef:
+    apiVersion: storage.example.org/v1alpha1
+    kind: Bucket
+  
+  resources:
+    - name: s3-bucket
+      base:
+        apiVersion: s3.aws.crossplane.io/v1beta1
+        kind: Bucket
+        spec:
+          forProvider:
+            region: us-east-1
+            serverSideEncryptionConfiguration:
+              - rule:
+                  applyServerSideEncryptionByDefault:
+                    sseAlgorithm: AES256
+          providerConfigRef:
+            name: default
+          deletionPolicy: Delete
+      
+      patches:
+        - type: FromCompositeFieldPath
+          fromFieldPath: spec.name
+          toFieldPath: spec.forProvider.bucket
+        
+        - type: FromCompositeFieldPath
+          fromFieldPath: spec.region
+          toFieldPath: spec.forProvider.region

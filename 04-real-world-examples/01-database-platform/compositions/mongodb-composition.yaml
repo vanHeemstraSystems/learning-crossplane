@@ -1,2 +1,66 @@
-# MongoDB composition
-# Placeholder file - to be populated with actual content
+# MongoDB Database Composition
+# Creates MongoDB instances (can be Atlas or self-hosted)
+
+apiVersion: apiextensions.crossplane.io/v1
+kind: Composition
+metadata:
+  name: database-mongodb-aws
+  labels:
+    engine: mongodb
+    provider: aws
+spec:
+  compositeTypeRef:
+    apiVersion: database.example.org/v1alpha1
+    kind: Database
+  
+  writeConnectionSecretsToRef:
+    name: database-connection
+  
+  resources:
+    # Note: MongoDB on AWS typically uses DocumentDB (MongoDB-compatible)
+    # or MongoDB Atlas. This example uses DocumentDB.
+    - name: documentdb-cluster
+      base:
+        apiVersion: docdb.aws.crossplane.io/v1alpha1
+        kind: DBCluster
+        spec:
+          forProvider:
+            engine: docdb
+            engineVersion: "5.0.0"
+            masterUsername: admin
+            # Master password should come from secret
+            storageEncrypted: true
+            backupRetentionPeriod: 7
+          providerConfigRef:
+            name: default
+          deletionPolicy: Retain
+      
+      patches:
+        # Map instance class (for cluster instances)
+        - type: FromCompositeFieldPath
+          fromFieldPath: spec.instanceClass
+          toFieldPath: spec.forProvider.dbClusterInstanceClass
+        
+        # Map storage size
+        - type: FromCompositeFieldPath
+          fromFieldPath: spec.storageSize
+          toFieldPath: spec.forProvider.allocatedStorage
+        
+        # Map encryption
+        - type: FromCompositeFieldPath
+          fromFieldPath: spec.encryptionEnabled
+          toFieldPath: spec.forProvider.storageEncrypted
+        
+        # Map backup retention
+        - type: FromCompositeFieldPath
+          fromFieldPath: spec.backupRetentionDays
+          toFieldPath: spec.forProvider.backupRetentionPeriod
+        
+        # Write connection info back to XR
+        - type: ToCompositeFieldPath
+          fromFieldPath: status.atProvider.endpoint
+          toFieldPath: status.atProvider.endpoint
+        
+        - type: ToCompositeFieldPath
+          fromFieldPath: status.atProvider.port
+          toFieldPath: status.atProvider.port

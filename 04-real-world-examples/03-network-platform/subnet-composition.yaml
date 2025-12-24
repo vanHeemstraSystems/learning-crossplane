@@ -1,2 +1,90 @@
-# Subnet composition
-# Placeholder file - to be populated with actual content
+# Subnet Composition
+# Creates subnets in the VPC
+
+apiVersion: apiextensions.crossplane.io/v1
+kind: Composition
+metadata:
+  name: network-subnet-aws
+  labels:
+    resource: subnet
+    provider: aws
+spec:
+  compositeTypeRef:
+    apiVersion: network.example.org/v1alpha1
+    kind: Network
+  
+  resources:
+    # Note: This is a simplified example
+    # Full implementation would create multiple subnets based on spec.subnets array
+    # For dynamic subnet creation, use Composition Functions
+    
+    # Example: Public Subnet
+    - name: public-subnet
+      base:
+        apiVersion: ec2.aws.crossplane.io/v1beta1
+        kind: Subnet
+        spec:
+          forProvider:
+            mapPublicIpOnLaunch: true
+          providerConfigRef:
+            name: default
+          deletionPolicy: Delete
+      
+      patches:
+        - type: FromCompositeFieldPath
+          fromFieldPath: status.atProvider.vpcId
+          toFieldPath: spec.forProvider.vpcId
+        
+        - type: FromCompositeFieldPath
+          fromFieldPath: spec.region
+          toFieldPath: spec.forProvider.region
+        
+        # Example: Use first subnet from array (full implementation needs function)
+        - type: CombineFromComposite
+          combine:
+            strategy: string
+            string:
+              fmt: "10.0.1.0/24"
+          toFieldPath: spec.forProvider.cidrBlock
+        
+        - type: CombineFromComposite
+          combine:
+            strategy: string
+            string:
+              fmt: "us-east-1a"
+          toFieldPath: spec.forProvider.availabilityZone
+    
+    # Example: Private Subnet
+    - name: private-subnet
+      base:
+        apiVersion: ec2.aws.crossplane.io/v1beta1
+        kind: Subnet
+        spec:
+          forProvider:
+            mapPublicIpOnLaunch: false
+          providerConfigRef:
+            name: default
+          deletionPolicy: Delete
+      
+      patches:
+        - type: FromCompositeFieldPath
+          fromFieldPath: status.atProvider.vpcId
+          toFieldPath: spec.forProvider.vpcId
+        
+        - type: FromCompositeFieldPath
+          fromFieldPath: spec.region
+          toFieldPath: spec.forProvider.region
+        
+        - type: CombineFromComposite
+          combine:
+            strategy: string
+            string:
+              fmt: "10.0.2.0/24"
+          toFieldPath: spec.forProvider.cidrBlock
+        
+        - type: CombineFromComposite
+          combine:
+            strategy: string
+            string:
+              fmt: "us-east-1b"
+          toFieldPath: spec.forProvider.availabilityZone

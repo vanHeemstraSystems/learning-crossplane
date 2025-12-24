@@ -1,2 +1,55 @@
-# Grafana composition
-# Placeholder file - to be populated with actual content
+# Grafana Composition
+# Creates Grafana deployment for visualization
+
+apiVersion: apiextensions.crossplane.io/v1
+kind: Composition
+metadata:
+  name: monitoring-grafana
+  labels:
+    component: grafana
+spec:
+  compositeTypeRef:
+    apiVersion: monitoring.example.org/v1alpha1
+    kind: Monitoring
+  
+  resources:
+    - name: grafana
+      base:
+        apiVersion: apps/v1
+        kind: Deployment
+        spec:
+          replicas: 1
+          selector:
+            matchLabels:
+              app: grafana
+          template:
+            metadata:
+              labels:
+                app: grafana
+            spec:
+              containers:
+                - name: grafana
+                  image: grafana/grafana:latest
+                  ports:
+                    - containerPort: 3000
+                  resources:
+                    requests:
+                      cpu: "100m"
+                      memory: "256Mi"
+                    limits:
+                      cpu: "500m"
+                      memory: "512Mi"
+                  env:
+                    - name: GF_SECURITY_ADMIN_PASSWORD
+                      value: admin
+      
+      patches:
+        - type: FromCompositeFieldPath
+          fromFieldPath: spec.grafana.enabled
+          toFieldPath: metadata.annotations[crossplane.io/optional]
+        
+        - type: FromCompositeFieldPath
+          fromFieldPath: spec.grafana.adminPassword
+          toFieldPath: spec.template.spec.containers[0].env[0].value
+          policy:
+            fromFieldPath: Optional

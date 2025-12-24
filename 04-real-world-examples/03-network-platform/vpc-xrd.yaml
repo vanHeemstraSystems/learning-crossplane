@@ -1,2 +1,101 @@
-# VPC XRD
-# Placeholder file - to be populated with actual content
+# Network (VPC) Composite Resource Definition (XRD)
+# Defines the custom API for network provisioning
+
+apiVersion: apiextensions.crossplane.io/v1
+kind: CompositeResourceDefinition
+metadata:
+  name: networks.network.example.org
+spec:
+  group: network.example.org
+  names:
+    kind: Network
+    plural: networks
+    singular: network
+  
+  # Enable namespaced XRs (v2 default)
+  claimNames:
+    kind: NetworkClaim
+    plural: networkclaims
+  
+  versions:
+    - name: v1alpha1
+      served: true
+      referenceable: true
+      schema:
+        openAPIV3Schema:
+          type: object
+          properties:
+            spec:
+              type: object
+              required:
+                - cidr
+                - region
+              properties:
+                # CIDR block for the VPC
+                cidr:
+                  type: string
+                  description: "CIDR block for the VPC (e.g., 10.0.0.0/16)"
+                  pattern: '^([0-9]{1,3}\.){3}[0-9]{1,3}/[0-9]{1,2}$'
+                
+                # AWS region
+                region:
+                  type: string
+                  description: "AWS region"
+                  default: us-east-1
+                
+                # Environment
+                environment:
+                  type: string
+                  description: "Environment (development, staging, production)"
+                  enum:
+                    - development
+                    - staging
+                    - production
+                  default: development
+                
+                # Enable DNS
+                enableDns:
+                  type: boolean
+                  description: "Enable DNS resolution"
+                  default: true
+                
+                # Enable DNS hostnames
+                enableDnsHostnames:
+                  type: boolean
+                  description: "Enable DNS hostnames"
+                  default: true
+                
+                # Subnet configuration
+                subnets:
+                  type: array
+                  description: "Subnets to create"
+                  items:
+                    type: object
+                    properties:
+                      name:
+                        type: string
+                      cidr:
+                        type: string
+                      az:
+                        type: string
+                      public:
+                        type: boolean
+                        default: false
+                
+                # Security group rules
+                securityRules:
+                  type: array
+                  description: "Security group rules"
+                  items:
+                    type: object
+                    properties:
+                      type:
+                        type: string
+                        enum: [ingress, egress]
+                      port:
+                        type: integer
+                      protocol:
+                        type: string
+                        enum: [tcp, udp, icmp]
+                      cidr:
+                        type: string

@@ -1,2 +1,38 @@
-# Frontend app example
-# Placeholder file - to be populated with actual content
+# Frontend Web Application Example
+# Demonstrates deploying a frontend web application
+
+apiVersion: app.example.org/v1alpha1
+kind: ApplicationClaim
+metadata:
+  name: frontend-web
+  namespace: production
+  labels:
+    environment: production
+    team: frontend
+    app: frontend-web
+spec:
+  image: myregistry/frontend
+  tag: v2.1.0
+  replicas: 2
+  cpu: "200m"
+  cpuLimit: "500m"
+  memory: "256Mi"
+  memoryLimit: "512Mi"
+  environment: production
+  ports:
+    - port: 80
+      protocol: TCP
+      name: http
+  env:
+    - name: API_URL
+      value: "https://api.example.com"
+    - name: ENVIRONMENT
+      value: production
+  ingress:
+    enabled: true
+    host: app.example.com
+    path: /
+    tls: true
+  healthCheck:
+    path: /
+    port: 80

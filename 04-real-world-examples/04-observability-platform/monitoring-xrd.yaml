@@ -1,2 +1,70 @@
-# Monitoring XRD
-# Placeholder file - to be populated with actual content
+# Monitoring Composite Resource Definition (XRD)
+# Defines the custom API for observability platform
+
+apiVersion: apiextensions.crossplane.io/v1
+kind: CompositeResourceDefinition
+metadata:
+  name: monitorings.monitoring.example.org
+spec:
+  group: monitoring.example.org
+  names:
+    kind: Monitoring
+    plural: monitorings
+    singular: monitoring
+  
+  claimNames:
+    kind: MonitoringClaim
+    plural: monitoringclaims
+  
+  versions:
+    - name: v1alpha1
+      served: true
+      referenceable: true
+      schema:
+        openAPIV3Schema:
+          type: object
+          properties:
+            spec:
+              type: object
+              properties:
+                # Prometheus configuration
+                prometheus:
+                  type: object
+                  properties:
+                    enabled:
+                      type: boolean
+                      default: true
+                    retention:
+                      type: string
+                      default: "30d"
+                    storage:
+                      type: string
+                      default: "50Gi"
+                
+                # Grafana configuration
+                grafana:
+                  type: object
+                  properties:
+                    enabled:
+                      type: boolean
+                      default: true
+                    adminPassword:
+                      type: string
+                    dashboards:
+                      type: array
+                      items:
+                        type: string
+                
+                # Loki configuration
+                loki:
+                  type: object
+                  properties:
+                    enabled:
+                      type: boolean
+                      default: true
+                    retention:
+                      type: string
+                      default: "30d"
+                    storage:
+                      type: string
+                      default: "100Gi"

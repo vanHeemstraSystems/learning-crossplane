@@ -1,2 +1,112 @@
-# Database XRD
-# Placeholder file - to be populated with actual content
+# Database Composite Resource Definition (XRD)
+# Defines the custom API for self-service database provisioning
+
+apiVersion: apiextensions.crossplane.io/v1
+kind: CompositeResourceDefinition
+metadata:
+  name: databases.database.example.org
+spec:
+  group: database.example.org
+  names:
+    kind: Database
+    plural: databases
+    singular: database
+  
+  # Enable namespaced XRs (v2 default)
+  claimNames:
+    kind: DatabaseClaim
+    plural: databaseclaims
+  
+  versions:
+    - name: v1alpha1
+      served: true
+      referenceable: true
+      schema:
+        openAPIV3Schema:
+          type: object
+          properties:
+            spec:
+              type: object
+              required:
+                - engine
+                - instanceClass
+              properties:
+                # Database engine
+                engine:
+                  type: string
+                  description: "Database engine type"
+                  enum:
+                    - postgres
+                    - mysql
+                    - mongodb
+                
+                # Engine version
+                engineVersion:
+                  type: string
+                  description: "Database engine version"
+                  default: "latest"
+                
+                # Instance class/size
+                instanceClass:
+                  type: string
+                  description: "Database instance class (e.g., db.t3.micro, M10)"
+                  default: db.t3.micro
+                
+                # Database name
+                dbName:
+                  type: string
+                  description: "Name of the database"
+                  pattern: '^[a-z0-9]([-a-z0-9]*[a-z0-9])?$'
+                
+                # Storage size in GB
+                storageSize:
+                  type: integer
+                  description: "Storage size in GB"
+                  minimum: 20
+                  maximum: 65536
+                  default: 20
+                
+                # Environment
+                environment:
+                  type: string
+                  description: "Environment (development, staging, production)"
+                  enum:
+                    - development
+                    - staging
+                    - production
+                  default: development
+                
+                # Enable backups
+                enableBackups:
+                  type: boolean
+                  description: "Enable automated backups"
+                  default: true
+                
+                # Backup retention period (days)
+                backupRetentionDays:
+                  type: integer
+                  description: "Backup retention period in days"
+                  minimum: 1
+                  maximum: 35
+                  default: 7
+                
+                # Enable encryption
+                encryptionEnabled:
+                  type: boolean
+                  description: "Enable encryption at rest"
+                  default: true
+                
+                # Write connection secrets
+                writeConnectionSecretsToRef:
+                  type: object
+                  description: "Where to write connection secrets"
+                  properties:
+                    name:
+                      type: string
+                      description: "Secret name"
+                    namespace:
+                      type: string
+                      description: "Secret namespace"
+                  required:
+                    - name
+                    - namespace

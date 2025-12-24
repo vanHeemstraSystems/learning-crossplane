@@ -1,2 +1,78 @@
-# VPC composition
-# Placeholder file - to be populated with actual content
+# VPC Composition
+# Creates a VPC with DNS configuration
+
+apiVersion: apiextensions.crossplane.io/v1
+kind: Composition
+metadata:
+  name: network-vpc-aws
+  labels:
+    resource: vpc
+    provider: aws
+spec:
+  compositeTypeRef:
+    apiVersion: network.example.org/v1alpha1
+    kind: Network
+  
+  resources:
+    # Resource 1: VPC
+    - name: vpc
+      base:
+        apiVersion: ec2.aws.crossplane.io/v1beta1
+        kind: VPC
+        spec:
+          forProvider:
+            enableDnsHostnames: true
+            enableDnsSupport: true
+            instanceTenancy: default
+          providerConfigRef:
+            name: default
+          deletionPolicy: Delete
+      
+      patches:
+        - type: FromCompositeFieldPath
+          fromFieldPath: spec.cidr
+          toFieldPath: spec.forProvider.cidrBlock
+        
+        - type: FromCompositeFieldPath
+          fromFieldPath: spec.region
+          toFieldPath: spec.forProvider.region
+        
+        - type: FromCompositeFieldPath
+          fromFieldPath: spec.enableDns
+          toFieldPath: spec.forProvider.enableDnsSupport
+        
+        - type: FromCompositeFieldPath
+          fromFieldPath: spec.enableDnsHostnames
+          toFieldPath: spec.forProvider.enableDnsHostnames
+        
+        # Write VPC ID back to XR
+        - type: ToCompositeFieldPath
+          fromFieldPath: status.atProvider.vpcId
+          toFieldPath: status.atProvider.vpcId
+        
+        # Add tags
+        - type: FromCompositeFieldPath
+          fromFieldPath: spec.environment
+          toFieldPath: spec.forProvider.tags[Environment]
+    
+    # Resource 2: Internet Gateway
+    - name: internet-gateway
+      base:
+        apiVersion: ec2.aws.crossplane.io/v1beta1
+        kind: InternetGateway
+        spec:
+          forProvider:
+            # VPC ID will be patched
+          providerConfigRef:
+            name: default
+          deletionPolicy: Delete
+      
+      patches:
+        - type: FromCompositeFieldPath
+          fromFieldPath: status.atProvider.vpcId
+          toFieldPath: spec.forProvider.vpcId
+        
+        # Add tags
+        - type: FromCompositeFieldPath
+          fromFieldPath: spec.environment
+          toFieldPath: spec.forProvider.tags[Environment]

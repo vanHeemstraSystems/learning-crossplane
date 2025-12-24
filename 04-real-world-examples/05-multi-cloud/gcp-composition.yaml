@@ -1,2 +1,36 @@
-# GCP-specific composition
-# Placeholder file - to be populated with actual content
+# GCP Storage Composition
+# Creates GCS buckets on GCP
+
+apiVersion: apiextensions.crossplane.io/v1
+kind: Composition
+metadata:
+  name: bucket-gcp
+  labels:
+    provider: gcp
+    resource: bucket
+spec:
+  compositeTypeRef:
+    apiVersion: storage.example.org/v1alpha1
+    kind: Bucket
+  
+  resources:
+    - name: gcs-bucket
+      base:
+        apiVersion: storage.gcp.crossplane.io/v1alpha1
+        kind: Bucket
+        spec:
+          forProvider:
+            location: US
+            storageClass: STANDARD
+          providerConfigRef:
+            name: default
+          deletionPolicy: Delete
+      
+      patches:
+        - type: FromCompositeFieldPath
+          fromFieldPath: spec.name
+          toFieldPath: spec.forProvider.name
+        
+        - type: FromCompositeFieldPath
+          fromFieldPath: spec.region
+          toFieldPath: spec.forProvider.location
