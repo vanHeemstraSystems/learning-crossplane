@@ -2,8 +2,6 @@
 
 A comprehensive learning resource for Crossplane v2.1+, the cloud-native control plane framework for building platforms without writing code.
 
-- [References](./REFERENCES.md)
-
 ![Crossplane Logo](https://crossplane.io/images/crossplane-logo.png)
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
@@ -354,7 +352,6 @@ learning-crossplane/
 ### Quick Start (5 minutes)
 
 1. **Install Crossplane**:
-   
    ```bash
    # Create a Kubernetes cluster (if needed)
    kind create cluster --name crossplane-playground
@@ -367,19 +364,19 @@ learning-crossplane/
      --create-namespace \
      crossplane-stable/crossplane
    ```
-1. **Verify Installation**:
-   
+
+2. **Verify Installation**:
    ```bash
    kubectl get pods -n crossplane-system
    ```
-1. **Install Crossplane CLI**:
-   
+
+3. **Install Crossplane CLI**:
    ```bash
    curl -sL "https://raw.githubusercontent.com/crossplane/crossplane/main/install.sh" | sh
    sudo mv crossplane /usr/local/bin
    ```
-1. **Run Your First Example**:
-   
+
+4. **Run Your First Example**:
    ```bash
    cd 01-fundamentals/01-installation
    ./verify-installation.sh
@@ -387,7 +384,7 @@ learning-crossplane/
 
 ### Detailed Setup
 
-See <01-fundamentals/README.md> for comprehensive installation and setup instructions.
+See [01-fundamentals/README.md](01-fundamentals/README.md) for comprehensive installation and setup instructions.
 
 ## Learning Path
 
@@ -396,13 +393,14 @@ See <01-fundamentals/README.md> for comprehensive installation and setup instruc
 **Goal**: Understand Crossplane fundamentals and basic resource management
 
 1. **Fundamentals** (`01-fundamentals/`)
-- Install Crossplane
-- Understand providers and managed resources
-- Learn about Custom Resource Definitions (CRDs)
-1. **Basic Compositions** (`02-compositions/01-xrd-basics/`)
-- Create your first XRD
-- Build simple compositions
-- Deploy composite resources
+   - Install Crossplane
+   - Understand providers and managed resources
+   - Learn about Custom Resource Definitions (CRDs)
+   
+2. **Basic Compositions** (`02-compositions/01-xrd-basics/`)
+   - Create your first XRD
+   - Build simple compositions
+   - Deploy composite resources
 
 **Lab**: Complete `10-labs/lab-01-installation/` and `lab-02-first-composition/`
 
@@ -411,13 +409,14 @@ See <01-fundamentals/README.md> for comprehensive installation and setup instruc
 **Goal**: Master composition functions and build reusable platform APIs
 
 1. **Composition Functions** (`03-composition-functions/`)
-- Work with Patch & Transform
-- Build function pipelines
-- Use templating functions (KCL, Go templates)
-1. **Real-World Patterns** (`04-real-world-examples/`)
-- Database self-service platform
-- Application deployment automation
-- Network infrastructure management
+   - Work with Patch & Transform
+   - Build function pipelines
+   - Use templating functions (KCL, Go templates)
+   
+2. **Real-World Patterns** (`04-real-world-examples/`)
+   - Database self-service platform
+   - Application deployment automation
+   - Network infrastructure management
 
 **Lab**: Complete `10-labs/lab-03-functions/` and `lab-04-database-platform/`
 
@@ -426,17 +425,19 @@ See <01-fundamentals/README.md> for comprehensive installation and setup instruc
 **Goal**: Implement production-ready control planes with security and operations
 
 1. **Security & Compliance** (`05-security/`)
-- RBAC and access control
-- Secrets management
-- Policy enforcement
-1. **Operations** (`06-operations/`)
-- Monitoring and observability
-- Troubleshooting patterns
-- Backup and disaster recovery
-1. **CI/CD Integration** (`07-ci-cd-integration/`)
-- GitOps workflows
-- Automated testing
-- Deployment pipelines
+   - RBAC and access control
+   - Secrets management
+   - Policy enforcement
+   
+2. **Operations** (`06-operations/`)
+   - Monitoring and observability
+   - Troubleshooting patterns
+   - Backup and disaster recovery
+   
+3. **CI/CD Integration** (`07-ci-cd-integration/`)
+   - GitOps workflows
+   - Automated testing
+   - Deployment pipelines
 
 **Lab**: Complete `10-labs/lab-05-production/`
 
@@ -445,13 +446,14 @@ See <01-fundamentals/README.md> for comprehensive installation and setup instruc
 **Goal**: Extend Crossplane and contribute to the ecosystem
 
 1. **Advanced Topics** (`08-advanced-topics/`)
-- Build custom providers
-- Develop custom functions
-- Implement webhooks
-1. **Community Contribution**
-- Contribute to open-source functions
-- Share composition patterns
-- Write blog posts and tutorials
+   - Build custom providers
+   - Develop custom functions
+   - Implement webhooks
+   
+2. **Community Contribution**
+   - Contribute to open-source functions
+   - Share composition patterns
+   - Write blog posts and tutorials
 
 ## Key Concepts
 
@@ -534,14 +536,13 @@ spec:
 ```
 
 Popular functions:
-
 - **function-patch-and-transform**: Traditional P&T compositions
 - **function-go-templating**: Go template-based composition
 - **function-kcl**: KCL language for composition
 - **function-auto-ready**: Automatic readiness detection
 - **Custom functions**: Written in Go or Python
 
-### What’s New in Crossplane v2
+### What's New in Crossplane v2
 
 - **Namespaced XRs**: Composite resources are namespaced by default
 - **No More Claims**: Simplified architecture removes the claim abstraction
@@ -551,7 +552,6 @@ Popular functions:
 ## Hands-On Labs
 
 Each lab includes:
-
 - Detailed step-by-step instructions
 - Starter files and templates
 - Complete solutions
@@ -560,10 +560,10 @@ Each lab includes:
 ### Available Labs
 
 1. **Lab 1**: Installation & Setup (30 min)
-1. **Lab 2**: First Composition (45 min)
-1. **Lab 3**: Composition Functions (60 min)
-1. **Lab 4**: Database Platform (90 min)
-1. **Lab 5**: Production Deployment (120 min)
+2. **Lab 2**: First Composition (45 min)
+3. **Lab 3**: Composition Functions (60 min)
+4. **Lab 4**: Database Platform (90 min)
+5. **Lab 5**: Production Deployment (120 min)
 
 See `10-labs/README.md` for detailed lab instructions.
 
@@ -572,15 +572,13 @@ See `10-labs/README.md` for detailed lab instructions.
 ### Composition Design
 
 ✅ **DO**:
-
 - Use meaningful, descriptive names for XRDs and compositions
 - Version your XRDs appropriately
 - Leverage function pipelines for complex logic
 - Document composition behavior in annotations
 - Use namespaced XRs unless you need cluster scope
 
-❌ **DON’T**:
-
+❌ **DON'T**:
 - Embed sensitive data directly in compositions
 - Create overly complex single compositions
 - Skip validation schemas in XRDs
@@ -630,7 +628,7 @@ See `10-labs/README.md` for detailed lab instructions.
 
 - [Crossplane Book on LeanPub](https://leanpub.com/crossplane)
 - [Technology Conversations Blog](https://technologyconversations.wordpress.com/)
-- [Viktor Farcic’s Tutorials](https://www.youtube.com/@DevOpsToolkit)
+- [Viktor Farcic's Tutorials](https://www.youtube.com/@DevOpsToolkit)
 - [Upbound Academy](https://www.upbound.io/academy)
 
 ### Tools & Extensions
@@ -663,10 +661,10 @@ Contributions are welcome! This is a learning resource for the community.
 ### How to Contribute
 
 1. Fork the repository
-1. Create a feature branch (`git checkout -b feature/new-example`)
-1. Add your example or improvement
-1. Ensure documentation is updated
-1. Submit a pull request
+2. Create a feature branch (`git checkout -b feature/new-example`)
+3. Add your example or improvement
+4. Ensure documentation is updated
+5. Submit a pull request
 
 ### Contribution Guidelines
 
@@ -700,13 +698,12 @@ Contributions are welcome! This is a learning resource for the community.
 ### Stay Updated
 
 Watch this repository for updates as Crossplane evolves. Major updates planned for:
-
 - Crossplane v2.2 (February 2026)
 - Crossplane v2.3 (May 2026)
 
 ## License
 
-This repository is licensed under the MIT License. See <LICENSE> for details.
+This repository is licensed under the MIT License. See [LICENSE](LICENSE) for details.
 
 ## Acknowledgments
 
@@ -718,12 +715,11 @@ This repository is licensed under the MIT License. See <LICENSE> for details.
 ## Author
 
 **Willem van Heemstra**
-
 - Security Domain Expert & Cloud Engineer
 - Focus: DevSecOps, Cloud Security, Platform Engineering
 - Location: Eersel, Netherlands
 
------
+---
 
 **⭐ If you find this resource helpful, please star the repository!**
 
@@ -731,7 +727,7 @@ This repository is licensed under the MIT License. See <LICENSE> for details.
 
 **📧 Questions? Open an issue or join the [Crossplane Slack](https://slack.crossplane.io/)**
 
------
+---
 
 *Last Updated: December 24, 2025*
 *Crossplane Version: v2.1 (November 2025)*
