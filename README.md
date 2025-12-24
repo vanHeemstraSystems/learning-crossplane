@@ -2,6 +2,8 @@
 
 A comprehensive learning resource for Crossplane v2.1+, the cloud-native control plane framework for building platforms without writing code.
 
+- [References](./REFERENCES.md)
+
 ![Crossplane Logo](https://crossplane.io/images/crossplane-logo.png)
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
