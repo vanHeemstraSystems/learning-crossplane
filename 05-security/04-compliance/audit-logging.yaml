@@ -1,2 +1,118 @@
-# Audit logging configuration
-# Placeholder file - to be populated with actual content
+# Audit Logging Configuration
+# Kubernetes audit policy for Crossplane operations
+
+# ============================================
+# Audit Policy Configuration
+# ============================================
+
+apiVersion: audit.k8s.io/v1
+kind: Policy
+rules:
+  # Log all Crossplane operations
+  - level: RequestResponse
+    resources:
+      - group: "apiextensions.crossplane.io"
+        resources: ["*"]
+    omitStages:
+      - RequestReceived
+  
+  # Log all XR operations
+  - level: RequestResponse
+    resources:
+      - group: "*"
+        resources: ["*"]
+    namespaces:
+      - "production"
+      - "staging"
+    omitStages:
+      - RequestReceived
+  
+  # Log secret access
+  - level: Metadata
+    resources:
+      - group: ""
+        resources: ["secrets"]
+    omitStages:
+      - RequestReceived
+  
+  # Log provider config changes
+  - level: RequestResponse
+    resources:
+      - group: "aws.crossplane.io"
+        resources: ["providerconfigs"]
+      - group: "azure.crossplane.io"
+        resources: ["providerconfigs"]
+      - group: "gcp.crossplane.io"
+        resources: ["providerconfigs"]
+    omitStages:
+      - RequestReceived
+  
+  # Default: Log metadata for everything else
+  - level: Metadata
+    omitStages:
+      - RequestReceived
+
+---
+# ============================================
+# Audit Webhook Configuration
+# ============================================
+# Configure audit webhook to send logs to external system
+
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: audit-webhook-config
+  namespace: kube-system
+data:
+  webhook-config.yaml: |
+    apiVersion: v1
+    kind: Config
+    clusters:
+      - name: audit-logging
+        cluster:
+          server: https://audit.example.com/api/v1/audit
+    contexts:
+      - context:
+          cluster: audit-logging
+        name: default-context
+    current-context: default-context
+
+---
+# ============================================
+# Audit Sink Configuration
+# ============================================
+# Example: Send audit logs to log aggregation system
+
+apiVersion: auditregistration.k8s.io/v1alpha1
+kind: AuditSink
+metadata:
+  name: crossplane-audit
+spec:
+  policy:
+    level: Metadata
+    stages:
+      - RequestReceived
+      - ResponseStarted
+      - ResponseComplete
+  webhook:
+    clientConfig:
+      url: https://audit.example.com/api/v1/audit
+    throttle:
+      qps: 10
+      burst: 15
+
+---
+# ============================================
+# Audit Log Best Practices
+# ============================================
+#
+# 1. Enable audit logging for all Crossplane operations
+# 2. Use RequestResponse level for critical operations
+# 3. Use Metadata level for less critical operations
+# 4. Store audit logs securely
+# 5. Encrypt audit logs at rest
+# 6. Implement log retention policies
+# 7. Regularly review audit logs
+# 8. Set up alerts for suspicious activities
+# 9. Backup audit logs regularly
+# 10. Use external log aggregation systems

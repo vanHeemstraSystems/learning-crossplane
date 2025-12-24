@@ -1,2 +1,107 @@
-# Admission control configuration
-# Placeholder file - to be populated with actual content
+# Admission Controller Examples
+# These examples show how to use Kubernetes admission controllers for policy enforcement
+
+# ============================================
+# Validating Admission Webhook Configuration
+# ============================================
+
+apiVersion: admissionregistration.k8s.io/v1
+kind: ValidatingWebhookConfiguration
+metadata:
+  name: crossplane-validation
+webhooks:
+  - name: validate.crossplane.io
+    admissionReviewVersions: ["v1", "v1beta1"]
+    clientConfig:
+      service:
+        name: validation-webhook
+        namespace: crossplane-system
+        path: "/validate"
+    rules:
+      # Validate all XRs
+      - apiGroups: ["*"]
+        apiVersions: ["*"]
+        operations: ["CREATE", "UPDATE"]
+        resources: ["*"]
+    failurePolicy: Fail
+    sideEffects: None
+    timeoutSeconds: 30
+
+---
+# ============================================
+# Mutating Admission Webhook Configuration
+# ============================================
+
+apiVersion: admissionregistration.k8s.io/v1
+kind: MutatingWebhookConfiguration
+metadata:
+  name: crossplane-mutation
+webhooks:
+  - name: mutate.crossplane.io
+    admissionReviewVersions: ["v1", "v1beta1"]
+    clientConfig:
+      service:
+        name: mutation-webhook
+        namespace: crossplane-system
+        path: "/mutate"
+    rules:
+      # Mutate XRs to add default labels
+      - apiGroups: ["*"]
+        apiVersions: ["*"]
+        operations: ["CREATE", "UPDATE"]
+        resources: ["*"]
+    failurePolicy: Ignore
+    sideEffects: NoneOnDryRun
+    timeoutSeconds: 30
+
+---
+# ============================================
+# Admission Webhook Service
+# ============================================
+
+apiVersion: v1
+kind: Service
+metadata:
+  name: validation-webhook
+  namespace: crossplane-system
+spec:
+  ports:
+    - port: 443
+      targetPort: 9443
+  selector:
+    app: validation-webhook
+
+---
+# ============================================
+# Example: Webhook Implementation
+# ============================================
+# Note: This is a conceptual example
+# Actual implementation requires a webhook server
+#
+# The webhook server should:
+# 1. Receive admission review requests
+# 2. Validate or mutate resources
+# 3. Return admission response
+#
+# Example Go webhook server structure:
+# - Listen on port 9443
+#  - Handle /validate endpoint
+#  - Handle /mutate endpoint
+#  - Validate XRs against policies
+#  - Return admission response
+
+---
+# ============================================
+# Admission Controller Best Practices
+# ============================================
+#
+# 1. Use ValidatingWebhookConfiguration for validation
+# 2. Use MutatingWebhookConfiguration for defaults
+# 3. Set appropriate failurePolicy (Fail or Ignore)
+# 4. Implement timeout handling
+# 5. Use sideEffects: None when possible
+# 6. Test webhooks thoroughly
+# 7. Handle webhook failures gracefully
+# 8. Monitor webhook performance
+# 9. Use certificates for TLS
+# 10. Implement webhook health checks

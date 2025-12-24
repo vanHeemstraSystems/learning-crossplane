@@ -1,2 +1,174 @@
-# Kyverno policy example
-# Placeholder file - to be populated with actual content
+# Kyverno Policy Examples
+# These policies use YAML syntax for validation and mutation
+
+# ============================================
+# Policy 1: Require Labels
+# ============================================
+
+apiVersion: kyverno.io/v1
+kind: ClusterPolicy
+metadata:
+  name: require-labels
+  annotations:
+    policies.kyverno.io/title: Require Labels
+    policies.kyverno.io/category: Best Practices
+    policies.kyverno.io/severity: medium
+    policies.kyverno.io/subject: CompositeResource
+    policies.kyverno.io/description: >-
+      Requires that all XRs have 'environment' and 'team' labels.
+spec:
+  validationFailureAction: Enforce
+  background: true
+  rules:
+    - name: require-environment-label
+      match:
+        resources:
+          kinds:
+            - "*"
+          namespaces:
+            - "production"
+            - "staging"
+      validate:
+        message: "Label 'environment' is required"
+        pattern:
+          metadata:
+            labels:
+              environment: "?*"
+    - name: require-team-label
+      match:
+        resources:
+          kinds:
+            - "*"
+      validate:
+        message: "Label 'team' is required"
+        pattern:
+          metadata:
+            labels:
+              team: "?*"
+
+---
+# ============================================
+# Policy 2: Validate Environment Values
+# ============================================
+
+apiVersion: kyverno.io/v1
+kind: ClusterPolicy
+metadata:
+  name: validate-environment
+  annotations:
+    policies.kyverno.io/title: Validate Environment Label
+    policies.kyverno.io/description: >-
+      Ensures environment label has valid values.
+spec:
+  validationFailureAction: Enforce
+  background: true
+  rules:
+    - name: validate-environment-values
+      match:
+        resources:
+          kinds:
+            - "*"
+      validate:
+        message: "Environment must be one of: development, staging, production"
+        pattern:
+          metadata:
+            labels:
+              environment: development | staging | production
+
+---
+# ============================================
+# Policy 3: Add Default Labels (Mutation)
+# ============================================
+
+apiVersion: kyverno.io/v1
+kind: ClusterPolicy
+metadata:
+  name: add-default-labels
+  annotations:
+    policies.kyverno.io/title: Add Default Labels
+    policies.kyverno.io/description: >-
+      Automatically adds default labels if missing.
+spec:
+  validationFailureAction: Enforce
+  background: true
+  rules:
+    - name: add-managed-by-label
+      match:
+        resources:
+          kinds:
+            - "*"
+      mutate:
+        patchStrategicMerge:
+          metadata:
+            labels:
+              +(managed-by): crossplane
+
+---
+# ============================================
+# Policy 4: Prevent Production Deletion
+# ============================================
+
+apiVersion: kyverno.io/v1
+kind: ClusterPolicy
+metadata:
+  name: prevent-production-deletion
+  annotations:
+    policies.kyverno.io/title: Prevent Production Deletion
+    policies.kyverno.io/description: >-
+      Prevents deletion of resources in production namespace.
+spec:
+  validationFailureAction: Enforce
+  background: true
+  rules:
+    - name: deny-production-deletion
+      match:
+        resources:
+          kinds:
+            - "*"
+          namespaces:
+            - "production"
+      validate:
+        message: "Cannot delete resources in production namespace"
+        deny:
+          conditions:
+            - key: "{{request.operation}}"
+              operator: Equals
+              value: DELETE
+
+---
+# ============================================
+# Policy 5: Require Resource Limits
+# ============================================
+
+apiVersion: kyverno.io/v1
+kind: ClusterPolicy
+metadata:
+  name: require-resource-limits
+  annotations:
+    policies.kyverno.io/title: Require Resource Limits
+    policies.kyverno.io/description: >-
+      Ensures resources have CPU and memory limits.
+spec:
+  validationFailureAction: Enforce
+  background: true
+  rules:
+    - name: require-cpu-limit
+      match:
+        resources:
+          kinds:
+            - "ApplicationClaim"
+      validate:
+        message: "CPU limit is required"
+        pattern:
+          spec:
+            cpuLimit: "?*"
+    - name: require-memory-limit
+      match:
+        resources:
+          kinds:
+            - "ApplicationClaim"
+      validate:
+        message: "Memory limit is required"
+        pattern:
+          spec:
+            memoryLimit: "?*"

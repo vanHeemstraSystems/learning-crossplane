@@ -1,2 +1,168 @@
-# Compliance check policies
-# Placeholder file - to be populated with actual content
+# Compliance Check Examples
+# Automated checks for compliance requirements
+
+# ============================================
+# Compliance Check: Label Requirements
+# ============================================
+
+apiVersion: kyverno.io/v1
+kind: ClusterPolicy
+metadata:
+  name: compliance-labels
+  annotations:
+    policies.kyverno.io/title: Compliance Labels
+    policies.kyverno.io/description: >-
+      Ensures all resources have required compliance labels.
+spec:
+  validationFailureAction: Enforce
+  background: true
+  rules:
+    - name: require-compliance-labels
+      match:
+        resources:
+          kinds:
+            - "*"
+      validate:
+        message: "Compliance labels required: environment, team, cost-center"
+        pattern:
+          metadata:
+            labels:
+              environment: "?*"
+              team: "?*"
+              cost-center: "?*"
+
+---
+# ============================================
+# Compliance Check: Encryption Requirements
+# ============================================
+
+apiVersion: kyverno.io/v1
+kind: ClusterPolicy
+metadata:
+  name: compliance-encryption
+  annotations:
+    policies.kyverno.io/title: Encryption Requirements
+    policies.kyverno.io/description: >-
+      Ensures encryption is enabled for sensitive resources.
+spec:
+  validationFailureAction: Enforce
+  background: true
+  rules:
+    - name: require-encryption
+      match:
+        resources:
+          kinds:
+            - "DatabaseClaim"
+      validate:
+        message: "Encryption must be enabled for databases"
+        pattern:
+          spec:
+            encryptionEnabled: true
+
+---
+# ============================================
+# Compliance Check: Backup Requirements
+# ============================================
+
+apiVersion: kyverno.io/v1
+kind: ClusterPolicy
+metadata:
+  name: compliance-backups
+  annotations:
+    policies.kyverno.io/title: Backup Requirements
+    policies.kyverno.io/description: >-
+      Ensures backups are enabled for production databases.
+spec:
+  validationFailureAction: Enforce
+  background: true
+  rules:
+    - name: require-production-backups
+      match:
+        resources:
+          kinds:
+            - "DatabaseClaim"
+      validate:
+        message: "Backups must be enabled for production databases"
+        all:
+          - key: "{{request.object.metadata.labels.environment}}"
+            operator: Equals
+            value: production
+          - key: "{{request.object.spec.enableBackups}}"
+            operator: Equals
+            value: true
+
+---
+# ============================================
+# Compliance Check: Resource Limits
+# ============================================
+
+apiVersion: kyverno.io/v1
+kind: ClusterPolicy
+metadata:
+  name: compliance-resource-limits
+  annotations:
+    policies.kyverno.io/title: Resource Limits
+    policies.kyverno.io/description: >-
+      Ensures resource limits are set to prevent resource exhaustion.
+spec:
+  validationFailureAction: Enforce
+  background: true
+  rules:
+    - name: require-resource-limits
+      match:
+        resources:
+          kinds:
+            - "ApplicationClaim"
+      validate:
+        message: "CPU and memory limits are required"
+        pattern:
+          spec:
+            cpuLimit: "?*"
+            memoryLimit: "?*"
+
+---
+# ============================================
+# Compliance Reporting (Example Structure)
+# ============================================
+# Note: Actual compliance reporting may require custom tools
+# This shows the structure of compliance checks
+
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: compliance-report-template
+data:
+  report.yaml: |
+    # Compliance Report Template
+    checks:
+      - name: label-compliance
+        status: pass
+        description: "All resources have required labels"
+      - name: encryption-compliance
+        status: pass
+        description: "All databases have encryption enabled"
+      - name: backup-compliance
+        status: pass
+        description: "All production databases have backups enabled"
+      - name: rbac-compliance
+        status: pass
+        description: "RBAC is properly configured"
+      - name: audit-compliance
+        status: pass
+        description: "Audit logging is enabled"
+
+---
+# ============================================
+# Compliance Check Best Practices
+# ============================================
+#
+# 1. Define compliance requirements clearly
+# 2. Implement automated checks
+# 3. Use policy engines for enforcement
+# 4. Regular compliance reviews
+# 5. Document compliance status
+# 6. Remediate violations promptly
+# 7. Generate compliance reports
+# 8. Track compliance over time
+# 9. Integrate with compliance frameworks
+# 10. Regular compliance training

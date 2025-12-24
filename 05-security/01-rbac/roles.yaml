@@ -1,2 +1,158 @@
-# RBAC roles
-# Placeholder file - to be populated with actual content
+# RBAC Roles for Crossplane
+# These roles define what permissions are granted
+
+# ============================================
+# Developer Role (Namespace-Scoped)
+# Allows developers to create and manage XRs in their namespace
+# ============================================
+
+apiVersion: rbac.authorization.k8s.io/v1
+kind: Role
+metadata:
+  name: developer
+  namespace: production
+rules:
+  # Database XRs
+  - apiGroups: ["database.example.org"]
+    resources: ["databaseclaims"]
+    verbs: ["get", "list", "create", "update", "delete", "patch", "watch"]
+  
+  # Application XRs
+  - apiGroups: ["app.example.org"]
+    resources: ["applicationclaims"]
+    verbs: ["get", "list", "create", "update", "delete", "patch", "watch"]
+  
+  # Network XRs
+  - apiGroups: ["network.example.org"]
+    resources: ["networkclaims"]
+    verbs: ["get", "list", "create", "update", "delete", "patch", "watch"]
+  
+  # View managed resources (read-only)
+  - apiGroups: ["*"]
+    resources: ["*"]
+    verbs: ["get", "list", "watch"]
+  
+  # View secrets (for connection secrets)
+  - apiGroups: [""]
+    resources: ["secrets"]
+    verbs: ["get", "list"]
+
+---
+# ============================================
+# Database User Role (Resource-Specific)
+# Only allows database operations
+# ============================================
+
+apiVersion: rbac.authorization.k8s.io/v1
+kind: Role
+metadata:
+  name: database-user
+  namespace: production
+rules:
+  - apiGroups: ["database.example.org"]
+    resources: ["databaseclaims"]
+    verbs: ["get", "list", "create", "update"]
+  
+  # View database connection secrets
+  - apiGroups: [""]
+    resources: ["secrets"]
+    resourceNames: ["*-connection", "*-credentials"]
+    verbs: ["get"]
+
+---
+# ============================================
+# Auditor Role (Read-Only)
+# Allows viewing all resources but no modifications
+# ============================================
+
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  name: auditor
+rules:
+  - apiGroups: ["*"]
+    resources: ["*"]
+    verbs: ["get", "list", "watch"]
+  
+  # Access to audit logs
+  - apiGroups: [""]
+    resources: ["events"]
+    verbs: ["get", "list", "watch"]
+
+---
+# ============================================
+# Platform Admin Role (Cluster-Scoped)
+# Allows managing compositions and XRDs
+# ============================================
+
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  name: platform-admin
+rules:
+  # Compositions
+  - apiGroups: ["apiextensions.crossplane.io"]
+    resources: ["compositions"]
+    verbs: ["get", "list", "create", "update", "delete", "patch", "watch"]
+  
+  # Composite Resource Definitions
+  - apiGroups: ["apiextensions.crossplane.io"]
+    resources: ["compositeresourcedefinitions"]
+    verbs: ["get", "list", "create", "update", "delete", "patch", "watch"]
+  
+  # Providers
+  - apiGroups: ["pkg.crossplane.io"]
+    resources: ["providers", "functions"]
+    verbs: ["get", "list", "create", "update", "delete"]
+  
+  # Provider Configs
+  - apiGroups: ["aws.crossplane.io", "azure.crossplane.io", "gcp.crossplane.io"]
+    resources: ["providerconfigs"]
+    verbs: ["get", "list", "create", "update", "delete"]
+  
+  # All XRs (read access)
+  - apiGroups: ["*"]
+    resources: ["*"]
+    verbs: ["get", "list", "watch"]
+
+---
+# ============================================
+# Crossplane System Role
+# For Crossplane system components
+# ============================================
+
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  name: crossplane-system
+rules:
+  # All resources (Crossplane needs broad access)
+  - apiGroups: ["*"]
+    resources: ["*"]
+    verbs: ["*"]
+
+---
+# ============================================
+# Provider Role
+# For provider pods
+# ============================================
+
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  name: crossplane-provider
+rules:
+  # Provider resources
+  - apiGroups: ["pkg.crossplane.io"]
+    resources: ["providers"]
+    verbs: ["get", "list", "watch"]
+  
+  # Managed resources (provider-specific)
+  - apiGroups: ["*"]
+    resources: ["*"]
+    verbs: ["get", "list", "create", "update", "delete", "patch", "watch"]
+  
+  # Secrets (for credentials)
+  - apiGroups: [""]
+    resources: ["secrets"]
+    verbs: ["get", "list", "watch"]

@@ -1,2 +1,153 @@
-# Role bindings
-# Placeholder file - to be populated with actual content
+# RBAC Role Bindings for Crossplane
+# These bindings connect users/groups to roles
+
+# ============================================
+# Developer Role Binding (Namespace-Scoped)
+# Grants developers access to their namespace
+# ============================================
+
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  name: developers
+  namespace: production
+subjects:
+  # Individual user
+  - kind: User
+    name: developer@example.com
+    apiGroup: rbac.authorization.k8s.io
+  # Group (preferred)
+  - kind: Group
+    name: developers
+    apiGroup: rbac.authorization.k8s.io
+roleRef:
+  kind: Role
+  name: developer
+  apiGroup: rbac.authorization.k8s.io
+
+---
+# ============================================
+# Database User Role Binding
+# Grants database-specific access
+# ============================================
+
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  name: database-users
+  namespace: production
+subjects:
+  - kind: Group
+    name: database-users
+    apiGroup: rbac.authorization.k8s.io
+roleRef:
+  kind: Role
+  name: database-user
+  apiGroup: rbac.authorization.k8s.io
+
+---
+# ============================================
+# Auditor Role Binding (Cluster-Scoped)
+# Grants read-only access to auditors
+# ============================================
+
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRoleBinding
+metadata:
+  name: auditors
+subjects:
+  - kind: Group
+    name: auditors
+    apiGroup: rbac.authorization.k8s.io
+roleRef:
+  kind: ClusterRole
+  name: auditor
+  apiGroup: rbac.authorization.k8s.io
+
+---
+# ============================================
+# Platform Admin Role Binding (Cluster-Scoped)
+# Grants platform administration permissions
+# ============================================
+
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRoleBinding
+metadata:
+  name: platform-admins
+subjects:
+  - kind: Group
+    name: platform-admins
+    apiGroup: rbac.authorization.k8s.io
+roleRef:
+  kind: ClusterRole
+  name: platform-admin
+  apiGroup: rbac.authorization.k8s.io
+
+---
+# ============================================
+# Crossplane System Role Binding
+# Grants permissions to Crossplane core
+# ============================================
+
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRoleBinding
+metadata:
+  name: crossplane-system
+subjects:
+  - kind: ServiceAccount
+    name: crossplane
+    namespace: crossplane-system
+roleRef:
+  kind: ClusterRole
+  name: crossplane-system
+  apiGroup: rbac.authorization.k8s.io
+
+---
+# ============================================
+# Provider Role Bindings
+# Grants permissions to provider pods
+# ============================================
+
+# AWS Provider
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRoleBinding
+metadata:
+  name: provider-aws
+subjects:
+  - kind: ServiceAccount
+    name: provider-aws
+    namespace: crossplane-system
+roleRef:
+  kind: ClusterRole
+  name: crossplane-provider
+  apiGroup: rbac.authorization.k8s.io
+
+---
+# Azure Provider
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRoleBinding
+metadata:
+  name: provider-azure
+subjects:
+  - kind: ServiceAccount
+    name: provider-azure
+    namespace: crossplane-system
+roleRef:
+  kind: ClusterRole
+  name: crossplane-provider
+  apiGroup: rbac.authorization.k8s.io
+
+---
+# GCP Provider
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRoleBinding
+metadata:
+  name: provider-gcp
+subjects:
+  - kind: ServiceAccount
+    name: provider-gcp
+    namespace: crossplane-system
+roleRef:
+  kind: ClusterRole
+  name: crossplane-provider
+  apiGroup: rbac.authorization.k8s.io

@@ -1,2 +1,137 @@
-# HashiCorp Vault integration
-# Placeholder file - to be populated with actual content
+# HashiCorp Vault Integration Examples
+# Integration patterns for using Vault with Crossplane
+
+# ============================================
+# Vault SecretStore for External Secrets Operator
+# ============================================
+
+apiVersion: external-secrets.io/v1beta1
+kind: SecretStore
+metadata:
+  name: vault-backend
+  namespace: crossplane-system
+spec:
+  provider:
+    vault:
+      server: https://vault.example.com:8200
+      path: secret
+      version: v2
+      auth:
+        kubernetes:
+          mountPath: kubernetes
+          role: crossplane
+          serviceAccountRef:
+            name: external-secrets-operator
+
+---
+# ============================================
+# ExternalSecret for Vault
+# ============================================
+
+apiVersion: external-secrets.io/v1beta1
+kind: ExternalSecret
+metadata:
+  name: vault-aws-creds
+  namespace: crossplane-system
+spec:
+  refreshInterval: 1h
+  secretStoreRef:
+    name: vault-backend
+    kind: SecretStore
+  target:
+    name: aws-creds
+    creationPolicy: Owner
+  data:
+    - secretKey: credentials
+      remoteRef:
+        key: crossplane/aws/credentials
+
+---
+# ============================================
+# Vault ProviderConfig (Alternative Approach)
+# ============================================
+# Some providers support Vault directly
+# This is provider-specific
+
+apiVersion: aws.crossplane.io/v1beta1
+kind: ProviderConfig
+metadata:
+  name: vault-backed
+spec:
+  credentials:
+    source: Secret
+    secretRef:
+      namespace: crossplane-system
+      name: aws-creds  # Synced from Vault via External Secrets
+
+---
+# ============================================
+# Vault Dynamic Secrets (Advanced)
+# ============================================
+# Vault can generate dynamic credentials on-demand
+# This example shows how to use dynamic AWS credentials
+
+apiVersion: external-secrets.io/v1beta1
+kind: ExternalSecret
+metadata:
+  name: dynamic-aws-creds
+  namespace: crossplane-system
+spec:
+  refreshInterval: 5m  # Short interval for dynamic secrets
+  secretStoreRef:
+    name: vault-backend
+    kind: SecretStore
+  target:
+    name: aws-creds-dynamic
+    creationPolicy: Owner
+  data:
+    - secretKey: access-key-id
+      remoteRef:
+        key: aws/creds/crossplane-role
+        property: access_key
+    - secretKey: secret-access-key
+      remoteRef:
+        key: aws/creds/crossplane-role
+        property: secret_key
+    - secretKey: security-token
+      remoteRef:
+        key: aws/creds/crossplane-role
+        property: security_token
+
+---
+# ============================================
+# Vault KV Secret Example
+# ============================================
+
+apiVersion: external-secrets.io/v1beta1
+kind: ExternalSecret
+metadata:
+  name: vault-kv-secret
+  namespace: crossplane-system
+spec:
+  refreshInterval: 1h
+  secretStoreRef:
+    name: vault-backend
+    kind: SecretStore
+  target:
+    name: provider-creds
+    creationPolicy: Owner
+  dataFrom:
+    - extract:
+        key: crossplane/provider-credentials
+
+---
+# ============================================
+# Vault Integration Best Practices
+# ============================================
+#
+# 1. Use Kubernetes Auth for service account authentication
+# 2. Use dynamic secrets when possible (short-lived credentials)
+# 3. Implement secret rotation policies in Vault
+# 4. Use Vault policies to limit access
+# 5. Enable audit logging in Vault
+# 6. Use Vault namespaces for multi-tenancy
+# 7. Regularly rotate Vault tokens
+# 8. Use Vault PKI for certificate management
+# 9. Implement Vault high availability
+# 10. Backup Vault encryption keys
