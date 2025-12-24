@@ -1,2 +1,165 @@
-# Conditional patching example
-# Placeholder file - to be populated with actual content
+# Conditional Patching Examples
+# These examples demonstrate conditional resource creation and patching
+
+# ============================================
+# Example 1: Conditional Resource Creation
+# ============================================
+
+apiVersion: apiextensions.crossplane.io/v1
+kind: Composition
+metadata:
+  name: network-conditional
+spec:
+  compositeTypeRef:
+    apiVersion: network.example.org/v1alpha1
+    kind: Network
+  
+  mode: Pipeline
+  
+  pipeline:
+    - step: conditional-resources
+      functionRef:
+        name: function-patch-and-transform
+      input:
+        resources:
+          # Always create VPC
+          - name: vpc
+            base:
+              apiVersion: ec2.aws.crossplane.io/v1beta1
+              kind: VPC
+              spec:
+                forProvider:
+                  enableDnsHostnames: true
+                  enableDnsSupport: true
+                providerConfigRef:
+                  name: default
+            patches:
+              - type: FromCompositeFieldPath
+                fromFieldPath: spec.cidr
+                toFieldPath: spec.forProvider.cidrBlock
+          
+          # Conditionally create subnet based on XR field
+          - name: subnet
+            base:
+              apiVersion: ec2.aws.crossplane.io/v1beta1
+              kind: Subnet
+              spec:
+                forProvider:
+                  mapPublicIpOnLaunch: true
+                providerConfigRef:
+                  name: default
+            patches:
+              - type: FromCompositeFieldPath
+                fromFieldPath: spec.createSubnet
+                toFieldPath: metadata.annotations[crossplane.io/optional]
+              - type: FromCompositeFieldPath
+                fromFieldPath: status.atProvider.vpcId
+                toFieldPath: spec.forProvider.vpcId
+
+---
+# ============================================
+# Example 2: Environment-Based Configuration
+# ============================================
+
+apiVersion: apiextensions.crossplane.io/v1
+kind: Composition
+metadata:
+  name: database-conditional
+spec:
+  compositeTypeRef:
+    apiVersion: database.example.org/v1alpha1
+    kind: Database
+  
+  mode: Pipeline
+  
+  pipeline:
+    - step: environment-based-config
+      functionRef:
+        name: function-patch-and-transform
+      input:
+        resources:
+          - name: rds-instance
+            base:
+              apiVersion: rds.aws.crossplane.io/v1beta1
+              kind: DBInstance
+              spec:
+                forProvider:
+                  engine: postgres
+                providerConfigRef:
+                  name: default
+            patches:
+              # Set instance class based on environment
+              - type: CombineFromComposite
+                combine:
+                  strategy: string
+                  string:
+                    fmt: "db.t3.%s"
+                toFieldPath: spec.forProvider.dbInstanceClass
+                fromFieldPath:
+                  - spec.environment
+                transforms:
+                  - type: map
+                    map:
+                      development: micro
+                      staging: small
+                      production: medium
+              
+              # Set multi-AZ based on environment
+              - type: FromCompositeFieldPath
+                fromFieldPath: spec.environment
+                toFieldPath: spec.forProvider.multiAz
+                transforms:
+                  - type: map
+                    map:
+                      development: false
+                      staging: false
+                      production: true
+
+---
+# ============================================
+# Example 3: Conditional Tags
+# ============================================
+
+apiVersion: apiextensions.crossplane.io/v1
+kind: Composition
+metadata:
+  name: resource-tagged
+spec:
+  compositeTypeRef:
+    apiVersion: network.example.org/v1alpha1
+    kind: Network
+  
+  mode: Pipeline
+  
+  pipeline:
+    - step: conditional-tags
+      functionRef:
+        name: function-patch-and-transform
+      input:
+        resources:
+          - name: vpc
+            base:
+              apiVersion: ec2.aws.crossplane.io/v1beta1
+              kind: VPC
+              spec:
+                forProvider:
+                  enableDnsHostnames: true
+                  enableDnsSupport: true
+                  tags:
+                    ManagedBy: crossplane
+                providerConfigRef:
+                  name: default
+            patches:
+              - type: FromCompositeFieldPath
+                fromFieldPath: spec.cidr
+                toFieldPath: spec.forProvider.cidrBlock
+              # Add environment tag
+              - type: FromCompositeFieldPath
+                fromFieldPath: spec.environment
+                toFieldPath: spec.forProvider.tags[Environment]
+              # Add cost center tag if provided
+              - type: FromCompositeFieldPath
+                fromFieldPath: spec.costCenter
+                toFieldPath: spec.forProvider.tags[CostCenter]
+                policy:
+                  fromFieldPath: Optional

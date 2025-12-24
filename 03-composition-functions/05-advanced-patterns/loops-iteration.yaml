@@ -1,2 +1,56 @@
-# Loops and iteration examples
-# Placeholder file - to be populated with actual content
+# Loops and Iteration Patterns
+# These examples demonstrate generating multiple resources from arrays
+
+# Note: Full loop support may require custom functions or templating
+# This shows the pattern using patch and transform
+
+apiVersion: apiextensions.crossplane.io/v1
+kind: Composition
+metadata:
+  name: network-multi-subnet
+spec:
+  compositeTypeRef:
+    apiVersion: network.example.org/v1alpha1
+    kind: Network
+  mode: Pipeline
+  pipeline:
+    - step: create-subnets
+      functionRef:
+        name: function-patch-and-transform
+      input:
+        resources:
+          # VPC (created first)
+          - name: vpc
+            base:
+              apiVersion: ec2.aws.crossplane.io/v1beta1
+              kind: VPC
+              spec:
+                forProvider:
+                  enableDnsHostnames: true
+                  enableDnsSupport: true
+                providerConfigRef:
+                  name: default
+            patches:
+              - type: FromCompositeFieldPath
+                fromFieldPath: spec.cidr
+                toFieldPath: spec.forProvider.cidrBlock
+          
+          # Note: For true iteration over arrays, use:
+          # - Go templating function with range
+          # - KCL function with loops
+          # - Custom function with iteration logic
+          
+          # Example: Fixed number of subnets (use templating for dynamic)
+          - name: subnet-1
+            base:
+              apiVersion: ec2.aws.crossplane.io/v1beta1
+              kind: Subnet
+              spec:
+                forProvider:
+                  mapPublicIpOnLaunch: true
+                providerConfigRef:
+                  name: default
+            patches:
+              - type: FromCompositeFieldPath
+                fromFieldPath: status.atProvider.vpcId
+                toFieldPath: spec.forProvider.vpcId

@@ -1,2 +1,23 @@
-# Helm-based composition
-# Placeholder file - to be populated with actual content
+# Helm Function Composition Example
+# This example shows how to use Helm charts in compositions
+
+apiVersion: apiextensions.crossplane.io/v1
+kind: Composition
+metadata:
+  name: app-helm
+spec:
+  compositeTypeRef:
+    apiVersion: app.example.org/v1alpha1
+    kind: Application
+  mode: Pipeline
+  pipeline:
+    - step: helm-template
+      functionRef:
+        name: function-helm
+      input:
+        # Helm chart configuration
+        chart: stable/nginx
+        values:
+          replicaCount: 3
+          image:
+            tag: "1.21"

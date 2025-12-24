@@ -1,2 +1,50 @@
-# External data integration
-# Placeholder file - to be populated with actual content
+# External Data Patterns
+# These examples demonstrate fetching data from external sources
+
+# Note: External data fetching typically requires custom functions
+# This shows the pattern conceptually
+
+apiVersion: apiextensions.crossplane.io/v1
+kind: Composition
+metadata:
+  name: network-external-data
+spec:
+  compositeTypeRef:
+    apiVersion: network.example.org/v1alpha1
+    kind: Network
+  mode: Pipeline
+  pipeline:
+    # Step 1: Fetch external data (custom function)
+    # - step: fetch-data
+    #   functionRef:
+    #     name: function-external-data
+    #   input:
+    #     api: "https://api.example.com/config"
+    #     auth:
+    #       type: bearer
+    #       token: "secret-token"
+    
+    # Step 2: Use fetched data
+    - step: create-resources
+      functionRef:
+        name: function-patch-and-transform
+      input:
+        resources:
+          - name: vpc
+            base:
+              apiVersion: ec2.aws.crossplane.io/v1beta1
+              kind: VPC
+              spec:
+                forProvider:
+                  enableDnsHostnames: true
+                  enableDnsSupport: true
+                providerConfigRef:
+                  name: default
+            patches:
+              - type: FromCompositeFieldPath
+                fromFieldPath: spec.cidr
+                toFieldPath: spec.forProvider.cidrBlock
+              # Use external data (from previous step)
+              # - type: FromCompositeFieldPath
+              #   fromFieldPath: status.functionResults[fetch-data].external.cidr
+              #   toFieldPath: spec.forProvider.cidrBlock

@@ -1,2 +1,155 @@
-# Pipeline composition example
-# Placeholder file - to be populated with actual content
+# Function Pipeline Composition Examples
+# These examples demonstrate chaining multiple functions together
+
+# ============================================
+# Example 1: Basic Two-Step Pipeline
+# ============================================
+
+apiVersion: apiextensions.crossplane.io/v1
+kind: Composition
+metadata:
+  name: network-pipeline-basic
+spec:
+  compositeTypeRef:
+    apiVersion: network.example.org/v1alpha1
+    kind: Network
+  
+  mode: Pipeline
+  
+  pipeline:
+    # Step 1: Patch and transform
+    - step: patch-resources
+      functionRef:
+        name: function-patch-and-transform
+      input:
+        resources:
+          - name: vpc
+            base:
+              apiVersion: ec2.aws.crossplane.io/v1beta1
+              kind: VPC
+              spec:
+                forProvider:
+                  enableDnsHostnames: true
+                  enableDnsSupport: true
+                providerConfigRef:
+                  name: default
+            patches:
+              - type: FromCompositeFieldPath
+                fromFieldPath: spec.cidr
+                toFieldPath: spec.forProvider.cidrBlock
+    
+    # Step 2: Additional processing (if needed)
+    # Functions process output from previous step
+
+---
+# ============================================
+# Example 2: Validate → Transform Pipeline
+# ============================================
+
+apiVersion: apiextensions.crossplane.io/v1
+kind: Composition
+metadata:
+  name: network-pipeline-validate
+spec:
+  compositeTypeRef:
+    apiVersion: network.example.org/v1alpha1
+    kind: Network
+  
+  mode: Pipeline
+  
+  pipeline:
+    # Step 1: Validate inputs
+    - step: validate-inputs
+      functionRef:
+        name: function-patch-and-transform
+      input:
+        # Validation can be done in first step
+        resources: []
+    
+    # Step 2: Transform and create resources
+    - step: create-resources
+      functionRef:
+        name: function-patch-and-transform
+      input:
+        resources:
+          - name: vpc
+            base:
+              apiVersion: ec2.aws.crossplane.io/v1beta1
+              kind: VPC
+              spec:
+                forProvider:
+                  enableDnsHostnames: true
+                  enableDnsSupport: true
+                providerConfigRef:
+                  name: default
+            patches:
+              - type: FromCompositeFieldPath
+                fromFieldPath: spec.cidr
+                toFieldPath: spec.forProvider.cidrBlock
+
+---
+# ============================================
+# Example 3: Multi-Step Resource Creation
+# ============================================
+
+apiVersion: apiextensions.crossplane.io/v1
+kind: Composition
+metadata:
+  name: network-pipeline-multi
+spec:
+  compositeTypeRef:
+    apiVersion: network.example.org/v1alpha1
+    kind: Network
+  
+  mode: Pipeline
+  
+  pipeline:
+    # Step 1: Create VPC
+    - step: create-vpc
+      functionRef:
+        name: function-patch-and-transform
+      input:
+        resources:
+          - name: vpc
+            base:
+              apiVersion: ec2.aws.crossplane.io/v1beta1
+              kind: VPC
+              spec:
+                forProvider:
+                  enableDnsHostnames: true
+                  enableDnsSupport: true
+                providerConfigRef:
+                  name: default
+            patches:
+              - type: FromCompositeFieldPath
+                fromFieldPath: spec.cidr
+                toFieldPath: spec.forProvider.cidrBlock
+              - type: ToCompositeFieldPath
+                fromFieldPath: status.atProvider.vpcId
+                toFieldPath: status.atProvider.vpcId
+    
+    # Step 2: Create dependent resources (uses VPC ID from step 1)
+    - step: create-subnet
+      functionRef:
+        name: function-patch-and-transform
+      input:
+        resources:
+          - name: subnet
+            base:
+              apiVersion: ec2.aws.crossplane.io/v1beta1
+              kind: Subnet
+              spec:
+                forProvider:
+                  mapPublicIpOnLaunch: true
+                providerConfigRef:
+                  name: default
+            patches:
+              - type: FromCompositeFieldPath
+                fromFieldPath: status.atProvider.vpcId
+                toFieldPath: spec.forProvider.vpcId
+              - type: CombineFromComposite
+                combine:
+                  strategy: string
+                  string:
+                    fmt: "10.0.1.0/24"
+                toFieldPath: spec.forProvider.cidrBlock

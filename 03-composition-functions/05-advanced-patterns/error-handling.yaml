@@ -1,2 +1,55 @@
-# Error handling patterns
-# Placeholder file - to be populated with actual content
+# Error Handling Patterns
+# These examples demonstrate proper error handling in functions
+
+# Error handling in Composition Functions:
+# 1. Validate inputs early
+# 2. Provide clear error messages
+# 3. Set appropriate status conditions
+# 4. Log errors for debugging
+
+apiVersion: apiextensions.crossplane.io/v1
+kind: Composition
+metadata:
+  name: network-with-validation
+spec:
+  compositeTypeRef:
+    apiVersion: network.example.org/v1alpha1
+    kind: Network
+  mode: Pipeline
+  pipeline:
+    # Step 1: Validate inputs (custom function)
+    # - step: validate
+    #   functionRef:
+    #     name: function-validate
+    #   input:
+    #     rules:
+    #       - field: spec.cidr
+    #         required: true
+    #         pattern: '^([0-9]{1,3}\.){3}[0-9]{1,3}/[0-9]{1,2}$'
+    #       - field: spec.region
+    #         required: true
+    #         enum: [us-east-1, us-west-2, eu-west-1]
+    
+    # Step 2: Create resources (only if validation passes)
+    - step: create-resources
+      functionRef:
+        name: function-patch-and-transform
+      input:
+        resources:
+          - name: vpc
+            base:
+              apiVersion: ec2.aws.crossplane.io/v1beta1
+              kind: VPC
+              spec:
+                forProvider:
+                  enableDnsHostnames: true
+                  enableDnsSupport: true
+                providerConfigRef:
+                  name: default
+            patches:
+              - type: FromCompositeFieldPath
+                fromFieldPath: spec.cidr
+                toFieldPath: spec.forProvider.cidrBlock
+                # Error handling: Use policy to handle missing fields
+                policy:
+                  fromFieldPath: Required  # or Optional

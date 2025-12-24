@@ -1,2 +1,135 @@
-# Multi-function pipeline
-# Placeholder file - to be populated with actual content
+# Multi-Function Pipeline Examples
+# These examples show pipelines with multiple different function types
+
+# ============================================
+# Example 1: Validate → Patch → Template
+# ============================================
+
+apiVersion: apiextensions.crossplane.io/v1
+kind: Composition
+metadata:
+  name: network-multi-function
+spec:
+  compositeTypeRef:
+    apiVersion: network.example.org/v1alpha1
+    kind: Network
+  
+  mode: Pipeline
+  
+  pipeline:
+    # Step 1: Validate inputs
+    - step: validate
+      functionRef:
+        name: function-patch-and-transform
+      input:
+        # Validation logic
+        resources: []
+    
+    # Step 2: Patch and transform
+    - step: patch
+      functionRef:
+        name: function-patch-and-transform
+      input:
+        resources:
+          - name: vpc
+            base:
+              apiVersion: ec2.aws.crossplane.io/v1beta1
+              kind: VPC
+              spec:
+                forProvider:
+                  enableDnsHostnames: true
+                  enableDnsSupport: true
+                providerConfigRef:
+                  name: default
+            patches:
+              - type: FromCompositeFieldPath
+                fromFieldPath: spec.cidr
+                toFieldPath: spec.forProvider.cidrBlock
+    
+    # Step 3: Apply templates (if using templating function)
+    # - step: template
+    #   functionRef:
+    #     name: function-go-templating
+    #   input:
+    #     # Template configuration
+
+---
+# ============================================
+# Example 2: Sequential Resource Creation
+# ============================================
+
+apiVersion: apiextensions.crossplane.io/v1
+kind: Composition
+metadata:
+  name: database-multi-step
+spec:
+  compositeTypeRef:
+    apiVersion: database.example.org/v1alpha1
+    kind: Database
+  
+  mode: Pipeline
+  
+  pipeline:
+    # Step 1: Create subnet group
+    - step: create-subnet-group
+      functionRef:
+        name: function-patch-and-transform
+      input:
+        resources:
+          - name: subnet-group
+            base:
+              apiVersion: rds.aws.crossplane.io/v1beta1
+              kind: DBSubnetGroup
+              spec:
+                forProvider:
+                  description: "Subnet group for database"
+                providerConfigRef:
+                  name: default
+            patches:
+              - type: FromCompositeFieldPath
+                fromFieldPath: spec.subnetIds
+                toFieldPath: spec.forProvider.subnetIds
+    
+    # Step 2: Create security group
+    - step: create-security-group
+      functionRef:
+        name: function-patch-and-transform
+      input:
+        resources:
+          - name: security-group
+            base:
+              apiVersion: ec2.aws.crossplane.io/v1beta1
+              kind: SecurityGroup
+              spec:
+                forProvider:
+                  description: "Security group for database"
+                providerConfigRef:
+                  name: default
+            patches:
+              - type: FromCompositeFieldPath
+                fromFieldPath: spec.vpcId
+                toFieldPath: spec.forProvider.vpcId
+    
+    # Step 3: Create database (depends on subnet group and security group)
+    - step: create-database
+      functionRef:
+        name: function-patch-and-transform
+      input:
+        resources:
+          - name: rds-instance
+            base:
+              apiVersion: rds.aws.crossplane.io/v1beta1
+              kind: DBInstance
+              spec:
+                forProvider:
+                  engine: postgres
+                providerConfigRef:
+                  name: default
+            patches:
+              - type: FromCompositeFieldPath
+                fromFieldPath: spec.instanceClass
+                toFieldPath: spec.forProvider.dbInstanceClass
+              # Reference resources from previous steps
+              - type: FromCompositeFieldPath
+                fromFieldPath: status.resources[0].resourceRef.name
+                toFieldPath: spec.forProvider.dbSubnetGroupName

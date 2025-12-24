@@ -1,2 +1,2 @@
-# Python dependencies
-# Placeholder file - to be populated with actual content
+# Python dependencies for Composition Function
+# Add your dependencies here

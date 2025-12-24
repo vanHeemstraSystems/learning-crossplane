@@ -1,2 +1,51 @@
-# Conditional logic in functions
-# Placeholder file - to be populated with actual content
+# Conditional Logic Patterns
+# These examples demonstrate conditional resource creation
+
+apiVersion: apiextensions.crossplane.io/v1
+kind: Composition
+metadata:
+  name: network-conditional-advanced
+spec:
+  compositeTypeRef:
+    apiVersion: network.example.org/v1alpha1
+    kind: Network
+  mode: Pipeline
+  pipeline:
+    - step: conditional-resources
+      functionRef:
+        name: function-patch-and-transform
+      input:
+        resources:
+          # Always create VPC
+          - name: vpc
+            base:
+              apiVersion: ec2.aws.crossplane.io/v1beta1
+              kind: VPC
+              spec:
+                forProvider:
+                  enableDnsHostnames: true
+                  enableDnsSupport: true
+                providerConfigRef:
+                  name: default
+            patches:
+              - type: FromCompositeFieldPath
+                fromFieldPath: spec.cidr
+                toFieldPath: spec.forProvider.cidrBlock
+          
+          # Conditionally create public subnet
+          - name: public-subnet
+            base:
+              apiVersion: ec2.aws.crossplane.io/v1beta1
+              kind: Subnet
+              spec:
+                forProvider:
+                  mapPublicIpOnLaunch: true
+                providerConfigRef:
+                  name: default
+            patches:
+              - type: FromCompositeFieldPath
+                fromFieldPath: spec.createPublicSubnet
+                toFieldPath: metadata.annotations[crossplane.io/optional]
+              - type: FromCompositeFieldPath
+                fromFieldPath: status.atProvider.vpcId
+                toFieldPath: spec.forProvider.vpcId

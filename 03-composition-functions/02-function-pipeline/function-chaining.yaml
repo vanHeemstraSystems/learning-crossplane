@@ -1,2 +1,207 @@
-# Function chaining example
-# Placeholder file - to be populated with actual content
+# Function Chaining Examples
+# These examples demonstrate how to chain functions together for complex transformations
+
+# ============================================
+# Example 1: Simple Function Chain
+# ============================================
+
+apiVersion: apiextensions.crossplane.io/v1
+kind: Composition
+metadata:
+  name: network-chain
+spec:
+  compositeTypeRef:
+    apiVersion: network.example.org/v1alpha1
+    kind: Network
+  
+  mode: Pipeline
+  
+  pipeline:
+    # Chain 1: Initial transformation
+    - step: transform-1
+      functionRef:
+        name: function-patch-and-transform
+      input:
+        resources:
+          - name: vpc
+            base:
+              apiVersion: ec2.aws.crossplane.io/v1beta1
+              kind: VPC
+              spec:
+                forProvider:
+                  enableDnsHostnames: true
+                  enableDnsSupport: true
+                providerConfigRef:
+                  name: default
+            patches:
+              - type: FromCompositeFieldPath
+                fromFieldPath: spec.cidr
+                toFieldPath: spec.forProvider.cidrBlock
+    
+    # Chain 2: Additional processing
+    - step: transform-2
+      functionRef:
+        name: function-patch-and-transform
+      input:
+        resources:
+          # Process output from previous step
+          - name: subnet
+            base:
+              apiVersion: ec2.aws.crossplane.io/v1beta1
+              kind: Subnet
+              spec:
+                forProvider:
+                  mapPublicIpOnLaunch: true
+                providerConfigRef:
+                  name: default
+            patches:
+              - type: FromCompositeFieldPath
+                fromFieldPath: status.atProvider.vpcId
+                toFieldPath: spec.forProvider.vpcId
+
+---
+# ============================================
+# Example 2: Data Flow Through Chain
+# ============================================
+
+apiVersion: apiextensions.crossplane.io/v1
+kind: Composition
+metadata:
+  name: database-chain
+spec:
+  compositeTypeRef:
+    apiVersion: database.example.org/v1alpha1
+    kind: Database
+  
+  mode: Pipeline
+  
+  pipeline:
+    # Step 1: Fetch external data (if using external data function)
+    # - step: fetch-data
+    #   functionRef:
+    #     name: function-external-data
+    #   input:
+    #     # Fetch configuration from external source
+    
+    # Step 2: Transform with fetched data
+    - step: transform
+      functionRef:
+        name: function-patch-and-transform
+      input:
+        resources:
+          - name: rds-instance
+            base:
+              apiVersion: rds.aws.crossplane.io/v1beta1
+              kind: DBInstance
+              spec:
+                forProvider:
+                  engine: postgres
+                providerConfigRef:
+                  name: default
+            patches:
+              - type: FromCompositeFieldPath
+                fromFieldPath: spec.instanceClass
+                toFieldPath: spec.forProvider.dbInstanceClass
+    
+    # Step 3: Apply final transformations
+    - step: finalize
+      functionRef:
+        name: function-patch-and-transform
+      input:
+        resources:
+          # Additional resources or modifications
+          - name: backup
+            base:
+              apiVersion: rds.aws.crossplane.io/v1beta1
+              kind: DBSnapshot
+              spec:
+                providerConfigRef:
+                  name: default
+            patches:
+              - type: FromCompositeFieldPath
+                fromFieldPath: status.resources[0].resourceRef.name
+                toFieldPath: spec.forProvider.dbInstanceIdentifier
+
+---
+# ============================================
+# Example 3: Conditional Chain
+# ============================================
+
+apiVersion: apiextensions.crossplane.io/v1
+kind: Composition
+metadata:
+  name: network-conditional-chain
+spec:
+  compositeTypeRef:
+    apiVersion: network.example.org/v1alpha1
+    kind: Network
+  
+  mode: Pipeline
+  
+  pipeline:
+    # Always run: Create VPC
+    - step: create-vpc
+      functionRef:
+        name: function-patch-and-transform
+      input:
+        resources:
+          - name: vpc
+            base:
+              apiVersion: ec2.aws.crossplane.io/v1beta1
+              kind: VPC
+              spec:
+                forProvider:
+                  enableDnsHostnames: true
+                  enableDnsSupport: true
+                providerConfigRef:
+                  name: default
+            patches:
+              - type: FromCompositeFieldPath
+                fromFieldPath: spec.cidr
+                toFieldPath: spec.forProvider.cidrBlock
+    
+    # Conditionally run: Create public subnet
+    - step: create-public-subnet
+      functionRef:
+        name: function-patch-and-transform
+      input:
+        resources:
+          - name: public-subnet
+            base:
+              apiVersion: ec2.aws.crossplane.io/v1beta1
+              kind: Subnet
+              spec:
+                forProvider:
+                  mapPublicIpOnLaunch: true
+                providerConfigRef:
+                  name: default
+            patches:
+              - type: FromCompositeFieldPath
+                fromFieldPath: spec.createPublicSubnet
+                toFieldPath: metadata.annotations[crossplane.io/optional]
+              - type: FromCompositeFieldPath
+                fromFieldPath: status.atProvider.vpcId
+                toFieldPath: spec.forProvider.vpcId
+    
+    # Conditionally run: Create private subnet
+    - step: create-private-subnet
+      functionRef:
+        name: function-patch-and-transform
+      input:
+        resources:
+          - name: private-subnet
+            base:
+              apiVersion: ec2.aws.crossplane.io/v1beta1
+              kind: Subnet
+              spec:
+                forProvider:
+                  mapPublicIpOnLaunch: false
+                providerConfigRef:
+                  name: default
+            patches:
+              - type: FromCompositeFieldPath
+                fromFieldPath: spec.createPrivateSubnet
+                toFieldPath: metadata.annotations[crossplane.io/optional]
+              - type: FromCompositeFieldPath
+                fromFieldPath: status.atProvider.vpcId
+                toFieldPath: spec.forProvider.vpcId

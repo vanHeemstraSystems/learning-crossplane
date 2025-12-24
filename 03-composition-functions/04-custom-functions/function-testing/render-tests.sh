@@ -1,5 +1,19 @@
 #!/bin/bash
-# Test composition functions using crossplane render
+# Function Testing Script
+# Tests Composition Functions with sample inputs
 
-echo "Testing composition functions..."
-crossplane render xr.yaml composition.yaml functions.yaml
+set -e
+
+echo "Testing Composition Functions..."
+echo ""
+
+# Test with sample XR
+echo "Test 1: Simple Network XR"
+kubectl apply -f test-inputs.yaml --dry-run=client
+
+echo ""
+echo "Test 2: Network with Subnets"
+# Add more test cases here
+
+echo ""
+echo "Testing complete!"

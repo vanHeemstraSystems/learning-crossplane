@@ -1,2 +1,156 @@
-# Simple transform example
-# Placeholder file - to be populated with actual content
+# Simple Transform Examples using Patch and Transform Function
+# These examples demonstrate basic usage of the P&T function
+
+# ============================================
+# Example 1: Basic Composition with P&T Function
+# ============================================
+
+apiVersion: apiextensions.crossplane.io/v1
+kind: Composition
+metadata:
+  name: network-aws-pt
+spec:
+  compositeTypeRef:
+    apiVersion: network.example.org/v1alpha1
+    kind: Network
+  
+  # Use Pipeline mode to enable functions
+  mode: Pipeline
+  
+  pipeline:
+    - step: patch-and-transform
+      functionRef:
+        name: function-patch-and-transform
+      input:
+        resources:
+          - name: vpc
+            base:
+              apiVersion: ec2.aws.crossplane.io/v1beta1
+              kind: VPC
+              spec:
+                forProvider:
+                  enableDnsHostnames: true
+                  enableDnsSupport: true
+                providerConfigRef:
+                  name: default
+            patches:
+              - type: FromCompositeFieldPath
+                fromFieldPath: spec.cidr
+                toFieldPath: spec.forProvider.cidrBlock
+              - type: FromCompositeFieldPath
+                fromFieldPath: spec.region
+                toFieldPath: spec.forProvider.region
+
+---
+# ============================================
+# Example 2: Multiple Resources with P&T
+# ============================================
+
+apiVersion: apiextensions.crossplane.io/v1
+kind: Composition
+metadata:
+  name: network-complete-pt
+spec:
+  compositeTypeRef:
+    apiVersion: network.example.org/v1alpha1
+    kind: Network
+  
+  mode: Pipeline
+  
+  pipeline:
+    - step: create-resources
+      functionRef:
+        name: function-patch-and-transform
+      input:
+        resources:
+          # VPC
+          - name: vpc
+            base:
+              apiVersion: ec2.aws.crossplane.io/v1beta1
+              kind: VPC
+              spec:
+                forProvider:
+                  enableDnsHostnames: true
+                  enableDnsSupport: true
+                providerConfigRef:
+                  name: default
+            patches:
+              - type: FromCompositeFieldPath
+                fromFieldPath: spec.cidr
+                toFieldPath: spec.forProvider.cidrBlock
+              - type: FromCompositeFieldPath
+                fromFieldPath: spec.region
+                toFieldPath: spec.forProvider.region
+              - type: ToCompositeFieldPath
+                fromFieldPath: status.atProvider.vpcId
+                toFieldPath: status.atProvider.vpcId
+          
+          # Subnet
+          - name: subnet
+            base:
+              apiVersion: ec2.aws.crossplane.io/v1beta1
+              kind: Subnet
+              spec:
+                forProvider:
+                  mapPublicIpOnLaunch: true
+                providerConfigRef:
+                  name: default
+            patches:
+              - type: FromCompositeFieldPath
+                fromFieldPath: status.atProvider.vpcId
+                toFieldPath: spec.forProvider.vpcId
+              - type: FromCompositeFieldPath
+                fromFieldPath: spec.region
+                toFieldPath: spec.forProvider.region
+              - type: CombineFromComposite
+                combine:
+                  strategy: string
+                  string:
+                    fmt: "10.0.1.0/24"
+                toFieldPath: spec.forProvider.cidrBlock
+
+---
+# ============================================
+# Example 3: Combining Fields
+# ============================================
+
+apiVersion: apiextensions.crossplane.io/v1
+kind: Composition
+metadata:
+  name: bucket-pt
+spec:
+  compositeTypeRef:
+    apiVersion: storage.example.org/v1alpha1
+    kind: Bucket
+  
+  mode: Pipeline
+  
+  pipeline:
+    - step: create-bucket
+      functionRef:
+        name: function-patch-and-transform
+      input:
+        resources:
+          - name: s3-bucket
+            base:
+              apiVersion: s3.aws.crossplane.io/v1beta1
+              kind: Bucket
+              spec:
+                forProvider:
+                  region: us-east-1
+                providerConfigRef:
+                  name: default
+            patches:
+              # Combine environment and name for bucket name
+              - type: CombineFromComposite
+                combine:
+                  strategy: string
+                  string:
+                    fmt: "%s-%s-bucket"
+                toFieldPath: spec.forProvider.bucket
+                fromFieldPath:
+                  - spec.environment
+                  - metadata.name
+              - type: FromCompositeFieldPath
+                fromFieldPath: spec.region
+                toFieldPath: spec.forProvider.region

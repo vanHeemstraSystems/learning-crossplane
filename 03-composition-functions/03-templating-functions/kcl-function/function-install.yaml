@@ -1,2 +1,9 @@
-# KCL function installation
-# Placeholder file - to be populated with actual content
+# KCL Function Installation
+
+apiVersion: pkg.crossplane.io/v1
+kind: Function
+metadata:
+  name: function-kcl
+spec:
+  package: xpkg.upbound.io/upbound/function-kcl:v0.1.0
+  packagePullPolicy: IfNotPresent

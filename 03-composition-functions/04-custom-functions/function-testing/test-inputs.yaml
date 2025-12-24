@@ -1,2 +1,30 @@
-# Function test inputs
-# Placeholder file - to be populated with actual content
+# Test Inputs for Function Testing
+# Use these inputs to test your custom functions
+
+# Test Case 1: Simple Network XR
+apiVersion: network.example.org/v1alpha1
+kind: Network
+metadata:
+  name: test-network
+spec:
+  cidr: 10.0.0.0/16
+  region: us-east-1
+  environment: development
+
+---
+# Test Case 2: Network with Subnets
+apiVersion: network.example.org/v1alpha1
+kind: Network
+metadata:
+  name: test-network-subnets
+spec:
+  cidr: 10.0.0.0/16
+  region: us-east-1
+  environment: production
+  subnets:
+    - name: public
+      cidr: 10.0.1.0/24
+      az: us-east-1a
+    - name: private
+      cidr: 10.0.2.0/24
+      az: us-east-1b

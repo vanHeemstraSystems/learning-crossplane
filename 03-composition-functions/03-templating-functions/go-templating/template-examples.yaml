@@ -1,2 +1,120 @@
-# Go template examples
-# Placeholder file - to be populated with actual content
+# Go Template Examples
+# These examples demonstrate using Go templates in compositions
+
+# ============================================
+# Example 1: Simple Template
+# ============================================
+
+apiVersion: apiextensions.crossplane.io/v1
+kind: Composition
+metadata:
+  name: network-go-template
+spec:
+  compositeTypeRef:
+    apiVersion: network.example.org/v1alpha1
+    kind: Network
+  mode: Pipeline
+  pipeline:
+    - step: template-vpc
+      functionRef:
+        name: function-go-templating
+      input:
+        source: Inline
+        inline:
+          template: |
+            apiVersion: ec2.aws.crossplane.io/v1beta1
+            kind: VPC
+            metadata:
+              name: {{ .metadata.name }}-vpc
+            spec:
+              forProvider:
+                cidrBlock: {{ .spec.cidr }}
+                enableDnsHostnames: true
+                enableDnsSupport: true
+              providerConfigRef:
+                name: default
+
+---
+# ============================================
+# Example 2: Template with Conditionals
+# ============================================
+
+apiVersion: apiextensions.crossplane.io/v1
+kind: Composition
+metadata:
+  name: database-go-template
+spec:
+  compositeTypeRef:
+    apiVersion: database.example.org/v1alpha1
+    kind: Database
+  mode: Pipeline
+  pipeline:
+    - step: template-database
+      functionRef:
+        name: function-go-templating
+      input:
+        source: Inline
+        inline:
+          template: |
+            apiVersion: rds.aws.crossplane.io/v1beta1
+            kind: DBInstance
+            metadata:
+              name: {{ .metadata.name }}-db
+            spec:
+              forProvider:
+                engine: {{ .spec.engine }}
+                dbInstanceClass: {{ .spec.instanceClass }}
+                allocatedStorage: {{ .spec.storageSize }}
+                {{ if eq .spec.environment "production" }}
+                multiAz: true
+                backupRetentionPeriod: 7
+                {{ else }}
+                multiAz: false
+                backupRetentionPeriod: 1
+                {{ end }}
+              providerConfigRef:
+                name: default
+
+---
+# ============================================
+# Example 3: Template with Loops
+# ============================================
+
+apiVersion: apiextensions.crossplane.io/v1
+kind: Composition
+metadata:
+  name: network-multi-go-template
+spec:
+  compositeTypeRef:
+    apiVersion: network.example.org/v1alpha1
+    kind: Network
+  mode: Pipeline
+  pipeline:
+    - step: template-resources
+      functionRef:
+        name: function-go-templating
+      input:
+        source: Inline
+        inline:
+          template: |
+            # VPC
+            apiVersion: ec2.aws.crossplane.io/v1beta1
+            kind: VPC
+            metadata:
+              name: {{ .metadata.name }}-vpc
+            spec:
+              forProvider:
+                cidrBlock: {{ .spec.cidr }}
+            ---
+            # Subnets
+            {{ range $index, $subnet := .spec.subnets }}
+            apiVersion: ec2.aws.crossplane.io/v1beta1
+            kind: Subnet
+            metadata:
+              name: {{ $.metadata.name }}-subnet-{{ $index }}
+            spec:
+              forProvider:
+                cidrBlock: {{ $subnet.cidr }}
+                availabilityZone: {{ $subnet.az }}
+            ---
+            {{ end }}

@@ -1,2 +1,70 @@
-# P&T example 1
-# Placeholder file - to be populated with actual content
+# Example 1: Complete Network Composition with P&T Function
+# This example shows a complete network setup using the Patch and Transform function
+
+apiVersion: apiextensions.crossplane.io/v1
+kind: Composition
+metadata:
+  name: network-aws-complete
+spec:
+  compositeTypeRef:
+    apiVersion: network.example.org/v1alpha1
+    kind: Network
+  
+  mode: Pipeline
+  
+  pipeline:
+    - step: create-network-resources
+      functionRef:
+        name: function-patch-and-transform
+      input:
+        resources:
+          # VPC
+          - name: vpc
+            base:
+              apiVersion: ec2.aws.crossplane.io/v1beta1
+              kind: VPC
+              spec:
+                forProvider:
+                  enableDnsHostnames: true
+                  enableDnsSupport: true
+                providerConfigRef:
+                  name: default
+                deletionPolicy: Delete
+            patches:
+              - type: FromCompositeFieldPath
+                fromFieldPath: spec.cidr
+                toFieldPath: spec.forProvider.cidrBlock
+              - type: FromCompositeFieldPath
+                fromFieldPath: spec.region
+                toFieldPath: spec.forProvider.region
+              - type: ToCompositeFieldPath
+                fromFieldPath: status.atProvider.vpcId
+                toFieldPath: status.atProvider.vpcId
+          
+          # Internet Gateway
+          - name: internet-gateway
+            base:
+              apiVersion: ec2.aws.crossplane.io/v1beta1
+              kind: InternetGateway
+              spec:
+                providerConfigRef:
+                  name: default
+                deletionPolicy: Delete
+            patches:
+              - type: FromCompositeFieldPath
+                fromFieldPath: status.atProvider.vpcId
+                toFieldPath: spec.forProvider.vpcId
+          
+          # Route Table
+          - name: route-table
+            base:
+              apiVersion: ec2.aws.crossplane.io/v1beta1
+              kind: RouteTable
+              spec:
+                providerConfigRef:
+                  name: default
+                deletionPolicy: Delete
+            patches:
+              - type: FromCompositeFieldPath
+                fromFieldPath: status.atProvider.vpcId
+                toFieldPath: spec.forProvider.vpcId
