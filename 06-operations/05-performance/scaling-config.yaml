@@ -1,2 +1,228 @@
-# Scaling configuration
-# Placeholder file - to be populated with actual content
+# Scaling Configuration Examples
+# Examples for scaling Crossplane deployments
+
+# ============================================
+# Small Deployment Configuration
+# (< 100 managed resources)
+# ============================================
+
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: crossplane
+  namespace: crossplane-system
+spec:
+  replicas: 1
+  template:
+    spec:
+      containers:
+      - name: crossplane
+        image: crossplane/crossplane:v1.14.0
+        resources:
+          requests:
+            cpu: 500m
+            memory: 512Mi
+          limits:
+            cpu: 1000m
+            memory: 1Gi
+        args:
+          - --max-concurrent-reconciles=5
+
+---
+# ============================================
+# Medium Deployment Configuration
+# (100-1000 managed resources)
+# ============================================
+
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: crossplane
+  namespace: crossplane-system
+spec:
+  replicas: 2
+  template:
+    spec:
+      containers:
+      - name: crossplane
+        image: crossplane/crossplane:v1.14.0
+        resources:
+          requests:
+            cpu: 1000m
+            memory: 1Gi
+          limits:
+            cpu: 2000m
+            memory: 2Gi
+        args:
+          - --max-concurrent-reconciles=10
+
+---
+# ============================================
+# Large Deployment Configuration
+# (> 1000 managed resources)
+# ============================================
+
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: crossplane
+  namespace: crossplane-system
+spec:
+  replicas: 3
+  template:
+    spec:
+      containers:
+      - name: crossplane
+        image: crossplane/crossplane:v1.14.0
+        resources:
+          requests:
+            cpu: 2000m
+            memory: 2Gi
+          limits:
+            cpu: 4000m
+            memory: 4Gi
+        args:
+          - --max-concurrent-reconciles=20
+
+---
+# ============================================
+# Horizontal Pod Autoscaler (HPA)
+# Auto-scales based on CPU/memory
+# ============================================
+
+apiVersion: autoscaling/v2
+kind: HorizontalPodAutoscaler
+metadata:
+  name: crossplane
+  namespace: crossplane-system
+spec:
+  scaleTargetRef:
+    apiVersion: apps/v1
+    kind: Deployment
+    name: crossplane
+  minReplicas: 2
+  maxReplicas: 10
+  metrics:
+    - type: Resource
+      resource:
+        name: cpu
+        target:
+          type: Utilization
+          averageUtilization: 70
+    - type: Resource
+      resource:
+        name: memory
+        target:
+          type: Utilization
+          averageUtilization: 80
+
+---
+# ============================================
+# Provider Scaling Configuration
+# ============================================
+
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: provider-aws
+  namespace: crossplane-system
+spec:
+  replicas: 2  # Scale providers independently
+  template:
+    spec:
+      containers:
+      - name: provider-aws
+        image: xpkg.upbound.io/upbound/provider-aws-aws:v0.45.0
+        resources:
+          requests:
+            cpu: 200m
+            memory: 256Mi
+          limits:
+            cpu: 1000m
+            memory: 1Gi
+
+---
+# ============================================
+# Vertical Pod Autoscaler (VPA)
+# Auto-adjusts resource requests
+# ============================================
+
+apiVersion: autoscaling.k8s.io/v1
+kind: VerticalPodAutoscaler
+metadata:
+  name: crossplane-vpa
+  namespace: crossplane-system
+spec:
+  targetRef:
+    apiVersion: apps/v1
+    kind: Deployment
+    name: crossplane
+  updatePolicy:
+    updateMode: "Auto"  # or "Off", "Initial", "Recreate"
+
+---
+# ============================================
+# Cluster Autoscaler Configuration
+# For node-level scaling
+# ============================================
+#
+# Cluster Autoscaler is configured at cluster level
+# This shows the concept
+#
+# Enable Cluster Autoscaler in your cluster:
+# - AWS: EKS Cluster Autoscaler
+# - Azure: AKS Cluster Autoscaler
+# - GCP: GKE Autoscaler
+
+---
+# ============================================
+# Performance Tuning Parameters
+# ============================================
+
+# High-performance configuration
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: crossplane
+  namespace: crossplane-system
+spec:
+  replicas: 3
+  template:
+    spec:
+      containers:
+      - name: crossplane
+        image: crossplane/crossplane:v1.14.0
+        resources:
+          requests:
+            cpu: 2000m
+            memory: 2Gi
+          limits:
+            cpu: 4000m
+            memory: 4Gi
+        args:
+          # Increase concurrent reconciliations
+          - --max-concurrent-reconciles=20
+          # Tune garbage collection
+          - --go-memlimit=3Gi
+        env:
+          # Optimize Go runtime
+          - name: GOGC
+            value: "100"
+          - name: GOMAXPROCS
+            value: "4"
+
+---
+# ============================================
+# Scaling Best Practices
+# ============================================
+#
+# 1. Start Small: Begin with recommended settings
+# 2. Monitor: Watch resource usage and performance
+# 3. Scale Gradually: Increase incrementally
+# 4. Test: Test scaling in staging first
+# 5. Use HPA: Enable auto-scaling when stable
+# 6. Consider VPA: Use VPA for right-sizing
+# 7. Provider Scaling: Scale providers independently
+# 8. Load Distribution: Use multiple replicas
+# 9. Resource Limits: Set appropriate limits
+# 10. Regular Review: Review and adjust regularly

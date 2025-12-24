@@ -1,2 +1,163 @@
-# Prometheus recording rules
-# Placeholder file - to be populated with actual content
+# Prometheus Alerting Rules for Crossplane
+# These rules define when alerts should fire
+
+apiVersion: monitoring.coreos.com/v1
+kind: PrometheusRule
+metadata:
+  name: crossplane-alerts
+  namespace: crossplane-system
+  labels:
+    app: crossplane
+    prometheus: kube-prometheus
+    role: alert-rules
+spec:
+  groups:
+    # ============================================
+    # Crossplane Core Alerts
+    # ============================================
+    - name: crossplane.core
+      interval: 30s
+      rules:
+        - alert: CrossplaneDown
+          expr: up{job="crossplane"} == 0
+          for: 5m
+          labels:
+            severity: critical
+            component: crossplane
+          annotations:
+            summary: "Crossplane is down"
+            description: "Crossplane pod has been down for more than 5 minutes"
+        
+        - alert: CrossplaneHighReconciliationErrors
+          expr: rate(crossplane_reconcile_errors_total[5m]) > 0.1
+          for: 5m
+          labels:
+            severity: warning
+            component: crossplane
+          annotations:
+            summary: "High reconciliation error rate"
+            description: "Crossplane has {{ $value }} errors/second over the last 5 minutes"
+        
+        - alert: CrossplaneSlowReconciliation
+          expr: histogram_quantile(0.99, rate(crossplane_reconcile_duration_seconds_bucket[5m])) > 30
+          for: 10m
+          labels:
+            severity: warning
+            component: crossplane
+          annotations:
+            summary: "Slow reconciliation"
+            description: "99th percentile reconciliation time is {{ $value }}s (threshold: 30s)"
+    
+    # ============================================
+    # Provider Alerts
+    # ============================================
+    - name: crossplane.providers
+      interval: 30s
+      rules:
+        - alert: ProviderUnhealthy
+          expr: provider_health{status="unhealthy"} == 1
+          for: 5m
+          labels:
+            severity: critical
+            component: provider
+          annotations:
+            summary: "Provider is unhealthy"
+            description: "Provider {{ $labels.provider }} has been unhealthy for 5 minutes"
+        
+        - alert: ProviderHighAPIErrorRate
+          expr: rate(provider_api_errors_total[5m]) > 0.05
+          for: 5m
+          labels:
+            severity: warning
+            component: provider
+          annotations:
+            summary: "High provider API error rate"
+            description: "Provider {{ $labels.provider }} has {{ $value }} API errors/second"
+        
+        - alert: ProviderSlowResourceCreation
+          expr: histogram_quantile(0.95, rate(provider_resource_creation_duration_seconds_bucket[5m])) > 300
+          for: 10m
+          labels:
+            severity: warning
+            component: provider
+          annotations:
+            summary: "Slow resource creation"
+            description: "Provider {{ $labels.provider }} resource creation p95 is {{ $value }}s (threshold: 300s)"
+    
+    # ============================================
+    # Resource Alerts
+    # ============================================
+    - name: crossplane.resources
+      interval: 30s
+      rules:
+        - alert: ManyResourcesNotReady
+          expr: count(crossplane_managed_resources{status="not_ready"}) > 10
+          for: 10m
+          labels:
+            severity: warning
+            component: resources
+          annotations:
+            summary: "Many resources not ready"
+            description: "{{ $value }} managed resources are not ready"
+        
+        - alert: ResourceCreationFailing
+          expr: rate(crossplane_resource_creation_failures_total[5m]) > 0.01
+          for: 5m
+          labels:
+            severity: critical
+            component: resources
+          annotations:
+            summary: "Resource creation failing"
+            description: "Resource creation failure rate is {{ $value }} failures/second"
+    
+    # ============================================
+    # Composition Alerts
+    # ============================================
+    - name: crossplane.compositions
+      interval: 30s
+      rules:
+        - alert: CompositionRenderSlow
+          expr: histogram_quantile(0.95, rate(composition_render_duration_seconds_bucket[5m])) > 5
+          for: 10m
+          labels:
+            severity: warning
+            component: composition
+          annotations:
+            summary: "Slow composition rendering"
+            description: "Composition rendering p95 is {{ $value }}s (threshold: 5s)"
+        
+        - alert: CompositionErrors
+          expr: rate(composition_render_errors_total[5m]) > 0.01
+          for: 5m
+          labels:
+            severity: warning
+            component: composition
+          annotations:
+            summary: "Composition errors"
+            description: "Composition error rate is {{ $value }} errors/second"
+    
+    # ============================================
+    # Capacity Alerts
+    # ============================================
+    - name: crossplane.capacity
+      interval: 5m
+      rules:
+        - alert: HighResourceCount
+          expr: count(crossplane_managed_resources) > 1000
+          for: 1h
+          labels:
+            severity: info
+            component: capacity
+          annotations:
+            summary: "High resource count"
+            description: "Total managed resources: {{ $value }}"
+        
+        - alert: HighMemoryUsage
+          expr: container_memory_usage_bytes{pod=~"crossplane.*"} / container_spec_memory_limit_bytes > 0.9
+          for: 10m
+          labels:
+            severity: warning
+            component: capacity
+          annotations:
+            summary: "High memory usage"
+            description: "Pod {{ $labels.pod }} memory usage is {{ $value | humanizePercentage }}"

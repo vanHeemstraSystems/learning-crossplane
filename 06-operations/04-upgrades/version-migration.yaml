@@ -1,2 +1,193 @@
-# Version migration configurations
-# Placeholder file - to be populated with actual content
+# Version Migration Examples
+# Examples showing how to migrate between Crossplane versions
+
+# ============================================
+# Migration from v1 to v2
+# Key change: Namespaced XRs by default
+# ============================================
+
+# OLD (v1): Cluster-scoped XRD
+apiVersion: apiextensions.crossplane.io/v1
+kind: CompositeResourceDefinition
+metadata:
+  name: databases.database.example.org
+spec:
+  group: database.example.org
+  names:
+    kind: Database
+    plural: databases
+  # No claimNames = cluster-scoped only
+  versions:
+    - name: v1alpha1
+      served: true
+      referenceable: true
+      schema:
+        openAPIV3Schema:
+          type: object
+          properties:
+            spec:
+              type: object
+              properties:
+                engine:
+                  type: string
+                instanceClass:
+                  type: string
+
+---
+# NEW (v2): Namespaced XRD (recommended)
+apiVersion: apiextensions.crossplane.io/v1
+kind: CompositeResourceDefinition
+metadata:
+  name: databaseclaims.database.example.org
+spec:
+  group: database.example.org
+  names:
+    kind: DatabaseClaim
+    plural: databaseclaims
+  claimNames:
+    kind: DatabaseClaim
+    plural: databaseclaims
+  versions:
+    - name: v1alpha1
+      served: true
+      referenceable: true
+      schema:
+        openAPIV3Schema:
+          type: object
+          properties:
+            spec:
+              type: object
+              properties:
+                engine:
+                  type: string
+                instanceClass:
+                  type: string
+
+---
+# ============================================
+# Migration: Updating Composition for v2
+# ============================================
+
+# OLD (v1): Composition referencing cluster-scoped XR
+apiVersion: apiextensions.crossplane.io/v1
+kind: Composition
+metadata:
+  name: database-postgresql
+spec:
+  compositeTypeRef:
+    apiVersion: database.example.org/v1alpha1
+    kind: Database
+  resources:
+    - name: rds-instance
+      base:
+        apiVersion: rds.aws.crossplane.io/v1alpha1
+        kind: DBInstance
+        spec:
+          forProvider:
+            engine: postgres
+
+---
+# NEW (v2): Composition for namespaced XR
+apiVersion: apiextensions.crossplane.io/v1
+kind: Composition
+metadata:
+  name: database-postgresql
+spec:
+  compositeTypeRef:
+    apiVersion: database.example.org/v1alpha1
+    kind: DatabaseClaim  # Updated to claim kind
+  resources:
+    - name: rds-instance
+      base:
+        apiVersion: rds.aws.crossplane.io/v1alpha1
+        kind: DBInstance
+        spec:
+          forProvider:
+            engine: postgres
+
+---
+# ============================================
+# Migration: Migrating Existing XRs
+# ============================================
+
+# Step 1: Export existing cluster-scoped XRs
+# kubectl get database -o yaml > databases-backup.yaml
+
+# Step 2: Create namespaced DatabaseClaims from exported XRs
+apiVersion: database.example.org/v1alpha1
+kind: DatabaseClaim
+metadata:
+  name: my-database
+  namespace: production  # Now namespaced
+spec:
+  engine: postgres
+  instanceClass: db.t3.medium
+  # ... rest of spec from original Database
+
+---
+# ============================================
+# Migration: Provider Configuration Updates
+# ============================================
+
+# OLD: ProviderConfig (deprecated in some providers)
+apiVersion: aws.crossplane.io/v1beta1
+kind: ProviderConfig
+metadata:
+  name: default
+spec:
+  credentials:
+    source: Secret
+    secretRef:
+      name: aws-creds
+      namespace: crossplane-system
+      key: credentials
+
+---
+# NEW: ProviderConfigUsage (v2 pattern)
+apiVersion: aws.crossplane.io/v1beta1
+kind: ProviderConfig
+metadata:
+  name: default
+spec:
+  credentials:
+    source: Secret
+    secretRef:
+      name: aws-creds
+      namespace: crossplane-system
+      key: credentials
+
+# Usage is now explicit
+apiVersion: aws.crossplane.io/v1beta1
+kind: ProviderConfigUsage
+metadata:
+  name: usage-default
+spec:
+  providerConfigRef:
+    name: default
+  # Resources using this config are referenced
+
+---
+# ============================================
+# Migration Notes
+# ============================================
+#
+# Key Changes from v1 to v2:
+# 1. XRs are namespaced by default (use claimNames)
+# 2. Claims abstraction removed (XRDs are claims)
+# 3. Composition API largely unchanged
+# 4. Provider APIs may have changed
+#
+# Migration Steps:
+# 1. Review release notes for breaking changes
+# 2. Update XRDs to use claimNames
+# 3. Update Compositions to reference claim kinds
+# 4. Migrate existing XRs to new namespaced format
+# 5. Update documentation
+# 6. Test thoroughly in staging
+# 7. Execute migration in production
+#
+# Testing:
+# - Test XR creation in new format
+# - Verify managed resources created correctly
+# - Test XR updates and deletions
+# - Verify all functionality works

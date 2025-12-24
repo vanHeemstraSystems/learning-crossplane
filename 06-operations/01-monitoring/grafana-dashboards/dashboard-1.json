@@ -1,2 +1,96 @@
-# Grafana dashboard
-# Placeholder file - to be populated with actual content
+{
+  "dashboard": {
+    "title": "Crossplane Overview",
+    "tags": ["crossplane", "kubernetes"],
+    "timezone": "browser",
+    "schemaVersion": 16,
+    "version": 1,
+    "refresh": "30s",
+    "panels": [
+      {
+        "id": 1,
+        "title": "Reconciliation Rate",
+        "type": "graph",
+        "gridPos": {"h": 8, "w": 12, "x": 0, "y": 0},
+        "targets": [
+          {
+            "expr": "rate(crossplane_reconcile_total[5m])",
+            "legendFormat": "{{kind}}"
+          }
+        ]
+      },
+      {
+        "id": 2,
+        "title": "Reconciliation Errors",
+        "type": "graph",
+        "gridPos": {"h": 8, "w": 12, "x": 12, "y": 0},
+        "targets": [
+          {
+            "expr": "rate(crossplane_reconcile_errors_total[5m])",
+            "legendFormat": "{{kind}}"
+          }
+        ]
+      },
+      {
+        "id": 3,
+        "title": "Managed Resources",
+        "type": "stat",
+        "gridPos": {"h": 4, "w": 6, "x": 0, "y": 8},
+        "targets": [
+          {
+            "expr": "count(crossplane_managed_resources)",
+            "legendFormat": "Total Resources"
+          }
+        ]
+      },
+      {
+        "id": 4,
+        "title": "Ready Resources",
+        "type": "stat",
+        "gridPos": {"h": 4, "w": 6, "x": 6, "y": 8},
+        "targets": [
+          {
+            "expr": "count(crossplane_managed_resources{status=\"ready\"})",
+            "legendFormat": "Ready"
+          }
+        ]
+      },
+      {
+        "id": 5,
+        "title": "Provider Health",
+        "type": "graph",
+        "gridPos": {"h": 8, "w": 24, "x": 0, "y": 12},
+        "targets": [
+          {
+            "expr": "provider_health",
+            "legendFormat": "{{provider}}"
+          }
+        ]
+      },
+      {
+        "id": 6,
+        "title": "Reconciliation Duration (p95)",
+        "type": "graph",
+        "gridPos": {"h": 8, "w": 12, "x": 0, "y": 20},
+        "targets": [
+          {
+            "expr": "histogram_quantile(0.95, rate(crossplane_reconcile_duration_seconds_bucket[5m]))",
+            "legendFormat": "p95"
+          }
+        ]
+      },
+      {
+        "id": 7,
+        "title": "API Error Rate",
+        "type": "graph",
+        "gridPos": {"h": 8, "w": 12, "x": 12, "y": 20},
+        "targets": [
+          {
+            "expr": "rate(provider_api_errors_total[5m])",
+            "legendFormat": "{{provider}}"
+          }
+        ]
+      }
+    ]
+  }
+}

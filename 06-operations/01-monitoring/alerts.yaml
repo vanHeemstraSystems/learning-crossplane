@@ -1,2 +1,117 @@
-# Alert rules
-# Placeholder file - to be populated with actual content
+# Alert Configuration
+# Additional alert definitions and routing
+
+# ============================================
+# Alertmanager Configuration
+# ============================================
+
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: alertmanager-config
+  namespace: monitoring
+data:
+  alertmanager.yml: |
+    global:
+      resolve_timeout: 5m
+      slack_api_url: 'https://hooks.slack.com/services/YOUR/WEBHOOK/URL'
+    
+    route:
+      group_by: ['alertname', 'cluster', 'service']
+      group_wait: 10s
+      group_interval: 10s
+      repeat_interval: 12h
+      receiver: 'default'
+      routes:
+        # Critical alerts go to oncall
+        - match:
+            severity: critical
+          receiver: 'oncall'
+          continue: true
+        
+        # Warning alerts go to team channel
+        - match:
+            severity: warning
+          receiver: 'team'
+    
+    receivers:
+      - name: 'default'
+        slack_configs:
+          - channel: '#crossplane-alerts'
+            title: '{{ .GroupLabels.alertname }}'
+            text: '{{ range .Alerts }}{{ .Annotations.description }}{{ end }}'
+      
+      - name: 'oncall'
+        slack_configs:
+          - channel: '#oncall'
+            title: '🚨 CRITICAL: {{ .GroupLabels.alertname }}'
+            text: '{{ range .Alerts }}{{ .Annotations.description }}{{ end }}'
+        pagerduty_configs:
+          - service_key: 'YOUR_PAGERDUTY_KEY'
+      
+      - name: 'team'
+        slack_configs:
+          - channel: '#platform-team'
+            title: '⚠️ WARNING: {{ .GroupLabels.alertname }}'
+            text: '{{ range .Alerts }}{{ .Annotations.description }}{{ end }}'
+
+---
+# ============================================
+# Alert Examples
+# ============================================
+
+# Critical Alerts (require immediate attention)
+# - CrossplaneDown
+# - ProviderUnhealthy
+# - ResourceCreationFailing
+
+# Warning Alerts (attention needed soon)
+# - CrossplaneHighReconciliationErrors
+# - CrossplaneSlowReconciliation
+# - ProviderHighAPIErrorRate
+# - ManyResourcesNotReady
+
+# Info Alerts (informational)
+# - HighResourceCount
+
+---
+# ============================================
+# ServiceMonitor for Crossplane
+# ============================================
+
+apiVersion: monitoring.coreos.com/v1
+kind: ServiceMonitor
+metadata:
+  name: crossplane
+  namespace: crossplane-system
+  labels:
+    app: crossplane
+spec:
+  selector:
+    matchLabels:
+      app: crossplane
+  endpoints:
+    - port: metrics
+      interval: 30s
+      path: /metrics
+
+---
+# ============================================
+# ServiceMonitor for Providers
+# ============================================
+
+apiVersion: monitoring.coreos.com/v1
+kind: ServiceMonitor
+metadata:
+  name: crossplane-providers
+  namespace: crossplane-system
+  labels:
+    app: crossplane
+spec:
+  selector:
+    matchLabels:
+      component: provider
+  endpoints:
+    - port: metrics
+      interval: 30s
+      path: /metrics
