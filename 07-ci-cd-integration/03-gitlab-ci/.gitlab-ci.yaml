@@ -21,8 +21,8 @@ validate:yaml:
   before_script:
     - pip install yamllint
   script:
-    - yamllint -d '{extends: default, rules: {line-length: {max: 200}}}' .
-    - find . -name "*.yaml" -o -name "*.yml" | while read file; do python3 -c "import yaml; yaml.safe_load(open('$file'))"; done
+    - 'yamllint -d "{extends: default, rules: {line-length: {max: 200}}}" .'
+    - find . -name "*.yaml" -o -name "*.yml" | while read file; do python3 -c "import yaml, sys; yaml.safe_load(open('$file'))" || exit 1; done
   rules:
     - if: $CI_PIPELINE_SOURCE == "merge_request_event"
     - if: $CI_COMMIT_BRANCH == "main"
@@ -82,11 +82,16 @@ test:unit:
 
 test:integration:
   stage: test
-  image: bitnami/kubectl:latest
+  image: alpine/helm:latest
   services:
     - docker:dind
   before_script:
-    - apk add --no-cache docker-compose
+    - apk add --no-cache kubectl curl
+    - |
+      # Install kind
+      curl -Lo ./kind https://kind.sigs.k8s.io/dl/v0.20.0/kind-linux-amd64
+      chmod +x ./kind
+      mv ./kind /usr/local/bin/kind
     - kind create cluster --name test-cluster --wait 5m || true
   script:
     - |
