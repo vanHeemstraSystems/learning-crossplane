@@ -21,7 +21,7 @@ validate:yaml:
   before_script:
     - pip install yamllint
   script:
-    - 'yamllint -d "{extends: default, rules: {line-length: {max: 200}}}" .'
+    - yamllint .
     - find . -name "*.yaml" -o -name "*.yml" | while read file; do python3 -c "import yaml, sys; yaml.safe_load(open('$file'))" || exit 1; done
   rules:
     - if: $CI_PIPELINE_SOURCE == "merge_request_event"
