@@ -5,3 +5,4 @@
 - [Crossplane XRDs, Patches, and Compositions](https://notebooklm.google.com/notebook/4dbde541-79f5-47d1-9bf8-4fd9c51eb7ab)
 - [Multi-cloud Platform Engineering with Crossplane](https://www.youtube.com/live/AaIeNStnuew?si=j6KZu7GzjINJS_wr)
 - [Demo Crossplane with ArgoCD in GitHub](https://github.com/jonashackt/crossplane-argocd)
+- [Going full GitOps with Crossplane & ArgoCD](
