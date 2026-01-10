@@ -6,3 +6,4 @@
 - [Multi-cloud Platform Engineering with Crossplane](https://www.youtube.com/live/AaIeNStnuew?si=j6KZu7GzjINJS_wr)
 - [Demo Crossplane with ArgoCD in GitHub](https://github.com/jonashackt/crossplane-argocd)
 - [Going full GitOps with Crossplane & ArgoCD](https://www.codecentric.de/en/knowledge-hub/blog/full-gitops-with-crossplane-and-argocd)
+- [Jonas Hecht - Platform Engineer](https://jonashackt.io/)
