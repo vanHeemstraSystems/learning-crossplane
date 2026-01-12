@@ -69,7 +69,7 @@ Crossplane is a framework for building cloud-native control planes without needi
 
 ### Optional Tools
 
-- **k9s**: Terminal UI for Kubernetes
+- **k9s**: Terminal UI for Kubernetes **Note**: ([Installation Guide](https://k9scli.io/topics/install/))
 - **yq**: YAML processor **Note**: ([Installation with WinGet](https://winget.ragerworks.com/package/MikeFarah.yq))
 - **jq**: JSON processor **Note**: ([Installation with Chocolatey](https://bobbyhadz.com/blog/install-and-use-jq-on-windows))
 - **VS Code**: With Kubernetes and YAML extensions
