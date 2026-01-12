@@ -61,7 +61,7 @@ Crossplane is a framework for building cloud-native control planes without needi
 
 ### Required Tools
 
-- **Kubernetes Cluster**: v1.25+ (can use kind, minikube, or cloud provider)
+- **Kubernetes Cluster**: v1.25+ (can use kind, minikube, or cloud provider) **Note**: ([Installation of Kind](https://kind.sigs.k8s.io/docs/user/quick-start/))
 - **kubectl**: v1.25+ ([Installation Guide](https://kubernetes.io/docs/tasks/tools/))
 - **Crossplane CLI**: v1.17+ ([Installation Guide](https://docs.crossplane.io/latest/cli/)) **Note**: ([Installation with WinGet](https://winget.ragerworks.com/package/Crossplane.CrossplaneCli))
 - **Docker**: v24+ (for testing composition functions)
