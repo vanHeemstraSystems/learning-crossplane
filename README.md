@@ -356,7 +356,7 @@ learning-crossplane/
 1. **Install Crossplane**:
    ```bash
    # Create a Kubernetes cluster (if needed)
-   kind create cluster --name crossplane-playground
+   kind create cluster --name crossplane-playground # Alternatively: minikube start
    
    # Install Crossplane using Helm
    helm repo add crossplane-stable https://charts.crossplane.io/stable
